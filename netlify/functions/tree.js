@@ -55,7 +55,8 @@ export default async (req) => {
     const doc = (await store.get(KEY, { type: "json" })) || DEFAULT;
     const url = new URL(req.url);
     const token = url.searchParams.get("k") || req.headers.get("x-tree-token") || "";
-    const role = roleFor(doc, token, false);
+    const passOk = !!secret && (req.headers.get("x-family-pass") || "") === secret;
+    const role = roleFor(doc, token, passOk);
     if (role === "none") {
       return json({ error: "private" }, 401);   // trees are always private
     }

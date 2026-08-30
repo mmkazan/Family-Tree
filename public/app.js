@@ -1024,7 +1024,7 @@
   function submitPasscode(){ var val=$("pcInput").value; if(!val)return;
     $("pcErr").textContent="";
     fetch("/api/tree",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({passcode:val,verify:true})})
-    .then(function(r){ if(r.status===200){ passcode=val; try{localStorage.setItem("kz_pass",val);}catch(e){} setEditMode(true); closePasscode(); }
+    .then(function(r){ if(r.status===200){ passcode=val; try{localStorage.setItem("kz_pass",val);}catch(e){} setEditMode(true); closePasscode(); if(document.getElementById("privateGate")){ location.reload(); } }
       else { $("pcErr").textContent=T("pcWrong"); } })
     .catch(function(){ $("pcErr").textContent=T("offline"); }); }
 
@@ -1691,10 +1691,11 @@
     if($("privateGate")) return;
     var g=document.createElement("div"); g.id="privateGate"; g.className="private-gate";
     g.innerHTML='<div class="pg-box"><svg viewBox="0 0 24 24" fill="none" class="pg-ic"><path d="M6 10V8a6 6 0 1112 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5"/></svg>'+
-      '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p></div>';
+      '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p><button type="button" id="pgUnlock" class="btn" style="margin-top:16px">I have the family password</button></div>';
     document.body.appendChild(g);
+    var _pgu=document.getElementById("pgUnlock"); if(_pgu){ _pgu.addEventListener("click",function(){ openPasscode(); }); }
   }
-  fetch(treeEndpoint(),{cache:"no-store",headers: shareToken?{"x-tree-token":shareToken}:{}})
+  fetch(treeEndpoint(),{cache:"no-store",headers:(function(){var h={};if(shareToken)h["x-tree-token"]=shareToken;if(!accountMode&&passcode)h["x-family-pass"]=passcode;return h;})()})
     .then(function(r){ return r.json().then(function(j){return {status:r.status,j:j};}).catch(function(){return {status:r.status,j:null};}); })
     .then(function(res){
       stripTokenFromUrl();
