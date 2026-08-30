@@ -689,6 +689,7 @@
     html+=fieldRow(T("source"),"f_source",p.source,"","",true);
     html+='<div class="sec-title">'+esc(T("places"))+'</div><div id="placeRows"></div><button type="button" class="btn add-row" id="addPlace">'+esc(T("addPlace"))+'</button>';
     html+='<div class="sec-title">'+esc(T("mediaLinks"))+'</div><div id="mediaRows"></div><button type="button" class="btn add-row" id="addMedia">'+esc(T("addMediaLink"))+'</button>';
+    html+=memSectionHtml(pid);
     html+='<div class="sec-title">'+esc(T("relations"))+'</div>';
     html+='<div class="fam-now" id="famNow"></div>';
     html+='<div class="rel-grid">'+
@@ -791,6 +792,44 @@
   function openLightbox(src){ var lb=$("lightbox"); if(!lb)return; lb.querySelector("img").src=src; lb.classList.add("open"); }
   function closeLightbox(){ var lb=$("lightbox"); if(!lb)return; lb.classList.remove("open"); lb.querySelector("img").src=""; }
 
+  /* ===== Memories from WhatsApp (approved photo / voice / text shown on a person) ===== */
+  var memByPerson = {};
+  function loadMemories(){
+    fetch("/api/memories",{credentials:"include",cache:"no-store"})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if(!d || !d.memories) return;
+        var map={};
+        d.memories.forEach(function(m){
+          if(m.tree!==treeId || m.status!=="approved") return;
+          (map[m.personId]=map[m.personId]||[]).push(m);
+        });
+        memByPerson=map;
+        // If a read profile is open, refresh it so the memory appears without a tap.
+        if(selectedId && !editingId && drawer.classList.contains("open")) openProfile(selectedId);
+      }).catch(function(){});
+  }
+  function memMediaHtml(mm){
+    var t=(mm&&mm.type)||"", u=esc((mm&&mm.url)||"");
+    if(/^audio\//.test(t)) return '<audio class="m-file" src="'+u+'" controls preload="none"></audio>';
+    if(/^video\//.test(t)) return '<video class="m-file" src="'+u+'" controls preload="metadata" playsinline></video>';
+    if(/^image\//.test(t)) return '<img class="m-img" src="'+u+'" alt="memory" loading="lazy" data-full="'+u+'"/>';
+    return '<a class="p-mediabtn" href="'+u+'" target="_blank" rel="noopener noreferrer"><span class="ml">Attachment</span><span class="go">↗</span></a>';
+  }
+  function memSectionHtml(pid){
+    var mems=memByPerson[pid]; if(!mems||!mems.length) return "";
+    var lbl = (lang==="el") ? "Αναμνήσεις" : "Memories";
+    var h='<div class="p-field p-mems"><div class="k">💚 '+esc(lbl)+'</div>';
+    mems.forEach(function(m){
+      h+='<div class="mem-card">';
+      if(m.from) h+='<div class="mem-from">'+esc(m.from)+'</div>';
+      if(m.text) h+='<div class="mem-text">“'+esc(m.text)+'”</div>';
+      (m.media||[]).forEach(function(mm){ h+='<div class="mem-med">'+memMediaHtml(mm)+'</div>'; });
+      h+='</div>';
+    });
+    h+='</div>'; return h;
+  }
+
   function openProfile(pid){
     var p=P(pid); if(!p)return; selectedId=pid; editingId=null; $("drawerFoot").style.display="none";
     var nm=nameFor(p,lang), yr=yearsFor(p);
@@ -821,6 +860,7 @@
       rest.forEach(function(m){ h+=mediaItemHtml(m); });
       h+='</div>';
     }
+    h+=memSectionHtml(pid);
     h+='</div>';
     drawerBody.innerHTML=h; drawerBody.scrollTop=0;
     if(p.photo){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+p.photo+'")'; }
@@ -1748,6 +1788,7 @@
         if(shareRole==="edit" && shareToken && !passcode){ shareEditToken=shareToken; setEditMode(true); }
         else if(accountMode && shareRole==="edit"){ setEditMode(true); }
         paintChrome(); render(); if(!sessionStorage.getItem("kz_ui"))fit();
+        loadMemories();
       }
       // verify stored passcode quietly
       if(passcode){ fetch("/api/tree",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({passcode:passcode,verify:true})})
