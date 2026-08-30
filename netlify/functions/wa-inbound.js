@@ -10,9 +10,9 @@
 import crypto from "node:crypto";
 import { memories, memoryMedia, waContext, trees } from "../shared/blobs.js";
 import { newId } from "../shared/session.js";
+import { parseMemTag, stripMemTags } from "../shared/memtag.js";
 
 const CONTEXT_TTL = 6 * 60 * 60 * 1000; // remember "who is this for" for 6h per sender
-const TAG = /\[mem:([A-Za-z0-9_-]+):([A-Za-z0-9_-]+)\]/;
 
 function twiml(msg) {
   const body = msg ? `<Message>${msg.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}</Message>` : "";
@@ -54,11 +54,12 @@ export default async (req) => {
   const body = (params.Body || "").trim();
   const numMedia = parseInt(params.NumMedia || "0", 10) || 0;
 
-  // Who is this memory for? A tag in the message, else the sender's recent context.
+  // Who is this memory for? A tag in the message ALWAYS wins over stale context,
+  // else the sender's recent (<6h) context. Tolerant tag parsing (see memtag.js).
   let ctx = null;
-  const m = body.match(TAG);
-  if (m) {
-    ctx = { treeId: m[1], personId: m[2], ts: Date.now() };
+  const tag = parseMemTag(body);
+  if (tag) {
+    ctx = { treeId: tag.treeId, personId: tag.personId, ts: Date.now() };
     try { await waContext().setJSON(from, ctx); } catch {}
   } else {
     try {
@@ -79,6 +80,16 @@ export default async (req) => {
     personName = (p.nameEn || p.nameEl || "").trim();
   } catch {}
 
+  const cleanText = stripMemTags(body);
+
+  // Opener: tapping the "leave a memory" link sends ONLY the bare tag (no words, no
+  // media). Don't store an empty/junk memory — just set who it's for and invite the
+  // real memory. The context we saved above carries the person to the next message.
+  if (tag && !cleanText && numMedia === 0) {
+    const forWhom = personName ? " for " + personName : "";
+    return twiml(`💚 Ready when you are${forWhom}. Send a voice note, a photo, or type your memory now — the family will see it once they approve it.`);
+  }
+
   // Store the memory (text + any media), pending the owner's review.
   const memId = newId("mem");
   const media = [];
@@ -98,7 +109,6 @@ export default async (req) => {
     }
   }
 
-  const cleanText = body.replace(TAG, "").trim();
   const rec = { id: memId, treeId: ctx.treeId, personId: ctx.personId, from, fromName, text: cleanText, media, ts: Date.now(), status: "pending" };
   try { await memories().setJSON(`${ctx.treeId}/${memId}`, rec); } catch {}
 

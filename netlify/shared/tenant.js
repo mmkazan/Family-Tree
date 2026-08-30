@@ -30,6 +30,17 @@ export function redactLiving(people) {
   return out;
 }
 
+// Whether a memory attached to `person` may be shown to a share-link caller.
+// Mirrors redactLiving: an edit-link (family editor) sees everything; a view-link
+// sees memories for the deceased always, and for the living only when the tree
+// isn't hiding living people. Owner access is handled separately (sees all).
+export function memVisibleToRole(person, role, hideLiving) {
+  if (role === "edit") return true;
+  if (role !== "view") return false;
+  const deceased = !!(person && person.death);
+  return deceased || !hideLiving;
+}
+
 // What a client is allowed to see: never the ownerId or the secret share tokens.
 export function publicDoc(doc, role) {
   const s = doc.share || null;

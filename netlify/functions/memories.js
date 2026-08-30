@@ -5,6 +5,7 @@
 //                   voice/photo attachment to the tree card is the next step.
 import { currentUser } from "../shared/session.js";
 import { accounts, trees, memories } from "../shared/blobs.js";
+import { stripMemTags } from "../shared/memtag.js";
 
 const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -29,7 +30,7 @@ export default async (req) => {
         out.push({
           id: rec.id, tree: tid, personId: rec.personId,
           personName: (p.nameEn || p.nameEl || "Unknown"),
-          from: rec.fromName || rec.from || "", text: rec.text || "",
+          from: rec.fromName || rec.from || "", text: stripMemTags(rec.text || ""),
           status: rec.status, ts: rec.ts,
           media: (rec.media || []).map((m, i) => ({
             type: m.type,
@@ -57,18 +58,14 @@ export default async (req) => {
       return json({ ok: true });
     }
     if (action === "approve") {
+      // Just flip the status. Approved memories render in their own "💚 Memories"
+      // section on the person's card (owner via /api/memories, family via
+      // /api/memories-public) — we no longer copy the text into the person's notes,
+      // which used to make it show up twice.
+      rec.text = stripMemTags(rec.text || "");
       rec.status = "approved";
-      if (rec.text) {
-        const p = t.people && t.people[rec.personId];
-        if (p) {
-          const tag = "💬 " + (rec.fromName || "Family") + ": " + rec.text;
-          p.notes = (p.notes ? p.notes + "\n" : "") + tag;
-          t.updatedAt = Date.now();
-          await trees().setJSON(tree, t);
-        }
-      }
       await memories().setJSON(`${tree}/${mem}`, rec);
-      return json({ ok: true, note: "Text attached to the person's notes. Voice/photo → tree card is the next step." });
+      return json({ ok: true });
     }
     return json({ error: "bad_action" }, 400);
   }

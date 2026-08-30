@@ -54,6 +54,7 @@
       pcTitle:"Family edit access", pcLede:"Enter the family password to add and edit people.",
       pcPlaceholder:"Family password", pcOk:"Unlock", pcCancel:"Cancel", pcWrong:"That password didn't match. Try again.",
       saving:"Saving…", saved:"Saved", offline:"Not saved", conflictReload:"Someone else updated the tree — loaded the latest.",
+      leaveMemory:"Leave a memory", leaveMemoryHint:"Share a voice note, photo or message on WhatsApp",
       helpTitle:"Building your family tree", helpLede:"A shared, bilingual tree the whole family can grow together.",
       steps:[
         "<b>Unlock to edit.</b> Anyone can view the tree. To add or change people, press <b>Unlock to edit</b> and enter the family password.",
@@ -119,6 +120,7 @@
       pcTitle:"Πρόσβαση επεξεργασίας", pcLede:"Εισάγετε τον οικογενειακό κωδικό για να προσθέσετε ή να επεξεργαστείτε άτομα.",
       pcPlaceholder:"Οικογενειακός κωδικός", pcOk:"Ξεκλείδωμα", pcCancel:"Άκυρο", pcWrong:"Λάθος κωδικός. Δοκιμάστε ξανά.",
       saving:"Αποθήκευση…", saved:"Αποθηκεύτηκε", offline:"Δεν αποθηκεύτηκε", conflictReload:"Κάποιος άλλος ενημέρωσε το δέντρο — φορτώθηκε το πιο πρόσφατο.",
+      leaveMemory:"Αφήστε μια ανάμνηση", leaveMemoryHint:"Μοιραστείτε ηχητικό μήνυμα, φωτογραφία ή μήνυμα στο WhatsApp",
       helpTitle:"Δημιουργία του οικογενειακού δέντρου", helpLede:"Ένα κοινό, δίγλωσσο δέντρο που όλη η οικογένεια χτίζει μαζί.",
       steps:[
         "<b>Ξεκλείδωμα.</b> Όλοι μπορούν να δουν το δέντρο. Για επεξεργασία, πατήστε <b>Ξεκλείδωμα</b> και βάλτε τον οικογενειακό κωδικό.",
@@ -690,6 +692,7 @@
     html+='<div class="sec-title">'+esc(T("places"))+'</div><div id="placeRows"></div><button type="button" class="btn add-row" id="addPlace">'+esc(T("addPlace"))+'</button>';
     html+='<div class="sec-title">'+esc(T("mediaLinks"))+'</div><div id="mediaRows"></div><button type="button" class="btn add-row" id="addMedia">'+esc(T("addMediaLink"))+'</button>';
     html+=memSectionHtml(pid);
+    html+=memLeaveBtnHtml(pid);
     html+='<div class="sec-title">'+esc(T("relations"))+'</div>';
     html+='<div class="fam-now" id="famNow"></div>';
     html+='<div class="rel-grid">'+
@@ -794,8 +797,19 @@
 
   /* ===== Memories from WhatsApp (approved photo / voice / text shown on a person) ===== */
   var memByPerson = {};
+  // Strip any raw  [mem:tree:person]  tag that an older captured memory may still carry,
+  // so it never shows on a card (mirrors the server-side memtag.js).
+  function stripMemTag(s){ return String(s||"").replace(/[\[［【〔]\s*mem\s*[:：：]\s*[A-Za-z0-9_-]+\s*[:：：]\s*[A-Za-z0-9_-]+\s*[\]］】〕]/gi," ").replace(/\s{2,}/g," ").trim(); }
+  // The borrowed WhatsApp number that receives memories (overridable per-tree via config).
+  function memWaNumber(){ var c=(state.config&&state.config.memoryWhatsApp)||""; return String(c||"447476909484").replace(/[^0-9]/g,""); }
   function loadMemories(){
-    fetch("/api/memories",{credentials:"include",cache:"no-store"})
+    if(!accountMode || !treeId) return;   // memories are per-account-tree only
+    // Owner (session) uses the review endpoint; a family member on a share link uses
+    // the public endpoint carrying their token so the voice notes play for them too.
+    var u = shareToken
+      ? ("/api/memories-public?id="+encodeURIComponent(treeId)+"&k="+encodeURIComponent(shareToken))
+      : "/api/memories";
+    fetch(u,{credentials:"include",cache:"no-store"})
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(d){
         if(!d || !d.memories) return;
@@ -821,13 +835,26 @@
     var lbl = (lang==="el") ? "Αναμνήσεις" : "Memories";
     var h='<div class="p-field p-mems"><div class="k">💚 '+esc(lbl)+'</div>';
     mems.forEach(function(m){
+      var txt=stripMemTag(m.text);
       h+='<div class="mem-card">';
       if(m.from) h+='<div class="mem-from">'+esc(m.from)+'</div>';
-      if(m.text) h+='<div class="mem-text">“'+esc(m.text)+'”</div>';
+      if(txt) h+='<div class="mem-text">“'+esc(txt)+'”</div>';
       (m.media||[]).forEach(function(mm){ h+='<div class="mem-med">'+memMediaHtml(mm)+'</div>'; });
       h+='</div>';
     });
     h+='</div>'; return h;
+  }
+  // In-app "leave a memory" button → opens WhatsApp pre-filled with this person's tag,
+  // so anyone in the family can send a voice note / photo / message straight to the
+  // review queue. Account mode only (needs a treeId to tag).
+  function memLeaveBtnHtml(pid){
+    if(!accountMode || !treeId || !pid) return "";
+    var num=memWaNumber(); if(!num) return "";
+    var tag="[mem:"+treeId+":"+pid+"]";
+    var href="https://wa.me/"+num+"?text="+encodeURIComponent(tag);
+    return '<a class="mem-leave" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+
+      '<span class="ic">💚</span><span class="tx"><span class="t1">'+esc(T("leaveMemory"))+'</span>'+
+      '<span class="t2">'+esc(T("leaveMemoryHint"))+'</span></span><span class="wa">WhatsApp ↗</span></a>';
   }
 
   function openProfile(pid){
@@ -861,6 +888,7 @@
       h+='</div>';
     }
     h+=memSectionHtml(pid);
+    h+=memLeaveBtnHtml(pid);
     h+='</div>';
     drawerBody.innerHTML=h; drawerBody.scrollTop=0;
     if(p.photo){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+p.photo+'")'; }
@@ -1772,7 +1800,8 @@
     if($("privateGate")) return;
     var g=document.createElement("div"); g.id="privateGate"; g.className="private-gate";
     g.innerHTML='<div class="pg-box"><svg viewBox="0 0 24 24" fill="none" class="pg-ic"><path d="M6 10V8a6 6 0 1112 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5"/></svg>'+
-      '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p><button type="button" id="pgUnlock" class="btn" style="margin-top:16px">I have the family password</button></div>';
+      '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p><button type="button" id="pgUnlock" class="btn" style="margin-top:16px">I have the family password</button>'+
+      '<p class="pg-owner" style="margin-top:18px;font-size:13px;color:var(--faint,#889)">Family owner? <a href="/my" style="color:var(--olive,#5a7d5a);font-weight:700">Sign in to your account →</a></p></div>';
     document.body.appendChild(g);
     var _pgu=document.getElementById("pgUnlock"); if(_pgu){ _pgu.addEventListener("click",function(){ var _pcm=document.getElementById("pcModal"); if(_pcm)_pcm.style.zIndex="1200"; openPasscode(); }); }
   }
