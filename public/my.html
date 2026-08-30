@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Elaia — your trees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#F2EEE4; --surface:#FBFAF6; --surface2:#F5F1E7;
+    --ink:#1E2C2A; --muted:#657573; --hair:#E1DCCE;
+    --teal:#0E767D; --teal-deep:#0B565C; --brass:#A6803C; --brass-wash:#F1E9D7;
+    --olive:#7E8C5A; --danger:#9A3B2E;
+    --shadow:0 1px 2px rgba(20,40,45,.05),0 10px 34px rgba(20,40,45,.08);
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#0C1619; --surface:#12242A; --surface2:#0E1E23;
+    --ink:#E8EEEC; --muted:#8CA2A4; --hair:#22383E;
+    --teal:#57C4CE; --teal-deep:#8AD8DF; --brass:#CBA45C; --brass-wash:#241E10;
+    --olive:#9CAB79; --danger:#E0866F;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 14px 40px rgba(0,0,0,.4);
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(120% 80% at 50% -8%, color-mix(in srgb,var(--olive) 10%,transparent), transparent 60%);}
+  .wrap{max-width:600px;margin:0 auto;padding:56px 22px 80px}
+  .serif{font-family:"Cormorant Garamond",Georgia,serif}
+  header.top{text-align:center;margin-bottom:34px}
+  .brand{display:inline-flex;align-items:center;gap:11px}
+  .brand svg{width:34px;height:34px;color:var(--olive)}
+  .brand .name{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:2.5rem;letter-spacing:.02em;color:var(--ink);line-height:1}
+  .tagline{color:var(--muted);margin:.5em 0 0;font-size:1.02rem}
+  .card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--shadow);padding:26px 24px}
+  h2.serif{font-weight:600;font-size:1.5rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px;font-size:.96rem}
+  label{display:block;font-size:.82rem;letter-spacing:.02em;color:var(--muted);font-weight:600;margin:0 0 6px}
+  input[type=email],input[type=text]{width:100%;border:1.5px solid var(--hair);background:var(--bg);color:var(--ink);
+    border-radius:10px;padding:12px 13px;font:inherit;font-size:1rem;outline:none;transition:.15s}
+  input:focus{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 18%,transparent)}
+  .btn{border:none;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;font-size:.98rem;cursor:pointer;transition:.15s;
+    background:var(--teal);color:#fff}
+  .btn:hover{background:var(--teal-deep)}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#08191d}}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--hair)}
+  .btn.ghost:hover{border-color:var(--teal);color:var(--teal-deep);background:transparent}
+  .btn.block{width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px}
+  .row{display:flex;gap:10px;align-items:center}
+  .msg{margin-top:14px;font-size:.92rem;color:var(--muted);min-height:1.2em}
+  .msg.good{color:var(--teal-deep)} .msg.bad{color:var(--danger)}
+
+  .acctbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
+  .acctbar .who{font-size:.92rem;color:var(--muted)} .acctbar .who b{color:var(--ink);font-weight:600}
+  .trees{display:flex;flex-direction:column;gap:12px;margin:0 0 20px}
+  .tree{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    border:1px solid var(--hair);border-left:4px solid var(--olive);border-radius:12px;background:var(--surface2);padding:15px 16px;text-decoration:none;color:inherit;transition:.15s}
+  .tree:hover{border-color:var(--teal);border-left-color:var(--olive);transform:translateY(-1px)}
+  .tree .t-name{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:1.28rem;line-height:1.15}
+  .tree .t-meta{color:var(--muted);font-size:.85rem;margin-top:1px}
+  .tree .t-go{color:var(--teal-deep);font-weight:600;font-size:.9rem;white-space:nowrap}
+  .empty{text-align:center;color:var(--muted);padding:22px 8px;border:1px dashed var(--hair);border-radius:12px;margin-bottom:18px}
+  .divider{border:none;border-top:1px solid var(--hair);margin:20px 0}
+  .newtree{display:flex;gap:10px}.newtree input{flex:1}
+  @media(max-width:460px){.newtree{flex-direction:column}}
+  .foot{text-align:center;color:var(--muted);font-size:.8rem;margin-top:26px}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid color-mix(in srgb,var(--muted) 40%,transparent);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 12c-1.6-2.4-4.4-3-6.5-2.3C6 12 9 13 12 12Z" fill="currentColor" opacity=".55"/><path d="M12 9.5c1.4-2.6 4.3-3.4 6.5-2.8C17.7 9.5 14.8 10.6 12 9.5Z" fill="currentColor"/><circle cx="12" cy="20.5" r="1.3" fill="currentColor"/></svg>
+      <span class="name">Elaia</span>
+    </span>
+    <p class="tagline">Your family trees — one root, many branches.</p>
+  </header>
+
+  <section id="view" aria-live="polite">
+    <div class="card"><p class="sub" style="margin:0"><span class="spin"></span> Loading…</p></div>
+  </section>
+
+  <p class="foot">Private by design. Only you and people you share a link with can see a tree.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var view=document.getElementById("view");
+  function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function api(path,opts){opts=opts||{};opts.credentials="include";return fetch(path,opts);}
+
+  function boot(){
+    api("/api/me").then(function(r){ return r.status===200?r.json():null; })
+      .then(function(me){ me?showAccount(me):showSignIn(); })
+      .catch(function(){ showSignIn(); });
+  }
+
+  /* ---------- signed out ---------- */
+  function showSignIn(){
+    view.innerHTML =
+      '<div class="card">'+
+      '<h2 class="serif">Sign in</h2>'+
+      '<p class="sub">Enter your email and we’ll send you a one-tap sign-in link. No password to remember.</p>'+
+      '<label for="em">Email</label>'+
+      '<input type="email" id="em" placeholder="you@example.com" autocomplete="email">'+
+      '<div style="height:14px"></div>'+
+      '<button class="btn block" id="send">Send my sign-in link</button>'+
+      '<div class="msg" id="m"></div>'+
+      '</div>';
+    var em=document.getElementById("em"), send=document.getElementById("send"), m=document.getElementById("m");
+    function submit(){
+      var email=(em.value||"").trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ m.className="msg bad"; m.textContent="That doesn’t look like an email address."; return; }
+      send.disabled=true; m.className="msg"; m.innerHTML='<span class="spin"></span> Sending…';
+      api("/api/auth/request",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:email})})
+        .then(function(r){return r.json();})
+        .then(function(){ m.className="msg good"; m.textContent="Check your email — we’ve sent a sign-in link. Open it on this device."; send.disabled=false; })
+        .catch(function(){ m.className="msg bad"; m.textContent="Couldn’t send just now — try again in a moment."; send.disabled=false; });
+    }
+    send.addEventListener("click",submit);
+    em.addEventListener("keydown",function(e){ if(e.key==="Enter")submit(); });
+    em.focus();
+  }
+
+  /* ---------- signed in ---------- */
+  function showAccount(me){
+    view.innerHTML =
+      '<div class="card">'+
+      '<div class="acctbar"><span class="who">Signed in as <b>'+esc(me.email)+'</b></span>'+
+      '<button class="btn ghost" id="out">Sign out</button></div>'+
+      '<h2 class="serif">Your trees</h2>'+
+      '<p class="sub">Open a tree to view or edit it.</p>'+
+      '<div id="trees"><p class="sub"><span class="spin"></span> Loading your trees…</p></div>'+
+      '<hr class="divider">'+
+      '<label for="nt">Start a new tree</label>'+
+      '<div class="newtree"><input type="text" id="nt" placeholder="Family name (e.g. Kazantzis)"><button class="btn" id="create">Create</button></div>'+
+      '<div class="msg" id="m2"></div>'+
+      '</div>';
+    document.getElementById("out").addEventListener("click",function(){
+      api("/api/auth/logout",{method:"POST"}).then(function(){ location.reload(); }).catch(function(){ location.reload(); });
+    });
+    var nt=document.getElementById("nt"), create=document.getElementById("create"), m2=document.getElementById("m2");
+    function makeTree(){
+      var name=(nt.value||"").trim();
+      create.disabled=true; m2.className="msg"; m2.innerHTML='<span class="spin"></span> Creating…';
+      var body={}; if(name) body.title={en:name, el:name};
+      api("/api/trees",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+        .then(function(r){return r.json();})
+        .then(function(j){ if(j&&j.id){ location.href="/?id="+encodeURIComponent(j.id); } else { throw new Error(); } })
+        .catch(function(){ m2.className="msg bad"; m2.textContent="Couldn’t create the tree — try again."; create.disabled=false; });
+    }
+    create.addEventListener("click",makeTree);
+    nt.addEventListener("keydown",function(e){ if(e.key==="Enter")makeTree(); });
+    loadTrees();
+  }
+
+  function loadTrees(){
+    api("/api/trees").then(function(r){return r.json();}).then(function(d){
+      var box=document.getElementById("trees"); if(!box)return;
+      var list=(d&&d.trees)||[];
+      if(!list.length){ box.innerHTML='<div class="empty">No trees yet — start one below.</div>'; return; }
+      box.className="trees";
+      box.innerHTML=list.map(function(t){
+        var title=(t.title&&(t.title.en||t.title.el))||"Untitled tree";
+        var n=t.people||0;
+        return '<a class="tree" href="/?id='+encodeURIComponent(t.id)+'">'+
+          '<span><span class="t-name">'+esc(title)+'</span><span class="t-meta">'+n+' '+(n===1?'person':'people')+'</span></span>'+
+          '<span class="t-go">Open →</span></a>';
+      }).join("");
+    }).catch(function(){
+      var box=document.getElementById("trees"); if(box) box.innerHTML='<div class="empty">Couldn’t load your trees — refresh to try again.</div>';
+    });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -16,11 +16,11 @@ export default async (req) => {
   const url = new URL(req.url);
   const base = process.env.APP_URL || url.origin;
   const token = url.searchParams.get("token");
-  if (!token) return redirect(base + "/?login=bad");
+  if (!token) return redirect(base + "/my?login=bad");
 
   const rec = await magic().get(token, { type: "json" });
   await magic().delete(token); // single-use, whatever the outcome
-  if (!rec || !rec.exp || rec.exp < Date.now()) return redirect(base + "/?login=expired");
+  if (!rec || !rec.exp || rec.exp < Date.now()) return redirect(base + "/my?login=expired");
 
   const email = normEmail(rec.email);
   let uid = await emailIndex().get(email);
@@ -31,7 +31,7 @@ export default async (req) => {
   }
 
   const sid = signSession({ uid, exp: Date.now() + SESSION_MS });
-  return redirect(base + "/?login=ok", sessionCookie(sid));
+  return redirect(base + "/my", sessionCookie(sid));
 };
 
 export const config = { path: "/auth/verify" };
