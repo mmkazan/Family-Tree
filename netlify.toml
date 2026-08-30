@@ -10,3 +10,14 @@
   from = "/api/tree"
   to = "/.netlify/functions/tree"
   status = 200
+
+# Always fetch the freshest page + script so a redeploy shows up immediately
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    cache-control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    cache-control = "public, max-age=0, must-revalidate"
