@@ -1693,7 +1693,7 @@
     g.innerHTML='<div class="pg-box"><svg viewBox="0 0 24 24" fill="none" class="pg-ic"><path d="M6 10V8a6 6 0 1112 0v2" stroke="currentColor" stroke-width="1.5"/><rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.5"/></svg>'+
       '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p><button type="button" id="pgUnlock" class="btn" style="margin-top:16px">I have the family password</button></div>';
     document.body.appendChild(g);
-    var _pgu=document.getElementById("pgUnlock"); if(_pgu){ _pgu.addEventListener("click",function(){ openPasscode(); }); }
+    var _pgu=document.getElementById("pgUnlock"); if(_pgu){ _pgu.addEventListener("click",function(){ var _pcm=document.getElementById("pcModal"); if(_pcm)_pcm.style.zIndex="1200"; openPasscode(); }); }
   }
   fetch(treeEndpoint(),{cache:"no-store",headers:(function(){var h={};if(shareToken)h["x-tree-token"]=shareToken;if(!accountMode&&passcode)h["x-family-pass"]=passcode;return h;})()})
     .then(function(r){ return r.json().then(function(j){return {status:r.status,j:j};}).catch(function(){return {status:r.status,j:null};}); })
