@@ -179,7 +179,13 @@
   function stripTokenFromUrl(){ if(!tokenFromUrl)return; tokenFromUrl=false;
     // NB: window.history — a local `var history` (undo/redo stack) shadows it in this closure
     try{ window.history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
-  function authPayload(){ if(passcode) return {passcode:passcode}; if(shareEditToken) return {editToken:shareEditToken}; return null; }
+  // --- Account mode (multi-tenant): activated by ?id=t_... in the URL. When OFF, everything below
+  // behaves exactly as the legacy single-tree app (passcode / share-token) — zero change for the family. ---
+  var treeId="", accountMode=false;
+  (function(){ var m=(location.search||"").match(/[?&]id=(t_[A-Za-z0-9_-]+)/); if(m){ treeId=m[1]; accountMode=true; } })();
+  function treeEndpoint(){ return accountMode ? ("/api/tree-doc?id="+encodeURIComponent(treeId)) : "/api/tree"; }
+  function authPayload(){ if(accountMode){ return shareEditToken ? {editToken:shareEditToken} : {session:true}; }
+    if(passcode) return {passcode:passcode}; if(shareEditToken) return {editToken:shareEditToken}; return null; }
 
   function saveUI(){ try{ sessionStorage.setItem("kz_ui",JSON.stringify({lang:lang,tx:tx})); }catch(e){} }
   function cfg(){ if(!state.config)state.config={secondLang:"el",mono:false}; if(!LANGS[state.config.secondLang])state.config.secondLang="el"; return state.config; }
@@ -810,11 +816,12 @@
     saving=true; setSaveInd("saving",T("saving"));
     var body={data:{title:state.title,people:state.people,config:state.config}};
     if(auth.passcode)body.passcode=auth.passcode; if(auth.editToken)body.editToken=auth.editToken;
-    fetch("/api/tree",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+    fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
     .then(function(r){ return r.json().then(function(j){return {status:r.status,j:j};}).catch(function(){return {status:r.status,j:{}};}); })
     .then(function(res){ saving=false;
       if(res.status===200&&res.j.ok){ state.version=res.j.version; setSaveInd("saved",T("saved")); if(pendingAgain){pendingAgain=false;doSave();} return; }
       if(res.status===401){ // credential no longer valid
+        if(accountMode){ setEditMode(false); setSaveInd("",""); return; }
         if(passcode){ passcode=""; try{localStorage.removeItem("kz_pass");}catch(e){} setEditMode(false); openPasscode(); }
         else { shareEditToken=""; shareRole="view"; setEditMode(false); }
         setSaveInd("",""); return; }
@@ -1593,12 +1600,12 @@
 
   /* ================= Share: magic links (view / edit) ================= */
   function shareOrigin(){ return location.origin + location.pathname; }
-  function buildLink(token){ return shareOrigin() + "#k=" + token; }
-  function shareApi(action, extra){ var body={passcode:passcode,share:action}; if(extra)for(var k in extra)body[k]=extra[k];
-    return fetch("/api/tree",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
+  function buildLink(token){ return shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; }
+  function shareApi(action, extra){ var body={share:action}; if(!accountMode)body.passcode=passcode; if(extra)for(var k in extra)body[k]=extra[k];
+    return fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
   function fillShare(j){ if(!j)return; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); $("shPrivate").checked=!!j.private; $("shareMsg").textContent=""; }
   function openShare(){
-    if(!passcode){ toast(T("shareNeedSave")); openPasscode(); return; }
+    if(!passcode && !accountMode){ toast(T("shareNeedSave")); openPasscode(); return; }
     $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=T("shareLede");
     $("shViewLbl").textContent=T("shViewLbl"); $("shEditLbl").textContent=T("shEditLbl");
     $("shViewCopy").textContent=T("copy"); $("shEditCopy").textContent=T("copy");
@@ -1690,7 +1697,7 @@
       '<h2>This tree is private</h2><p>Ask the family for a share link to view it.</p></div>';
     document.body.appendChild(g);
   }
-  fetch("/api/tree",{cache:"no-store",headers: shareToken?{"x-tree-token":shareToken}:{}})
+  fetch(treeEndpoint(),{cache:"no-store",headers: shareToken?{"x-tree-token":shareToken}:{}})
     .then(function(r){ return r.json().then(function(j){return {status:r.status,j:j};}).catch(function(){return {status:r.status,j:null};}); })
     .then(function(res){
       stripTokenFromUrl();
@@ -1700,6 +1707,7 @@
         applyServer(d);
         shareRole = d.role || "none";
         if(shareRole==="edit" && shareToken && !passcode){ shareEditToken=shareToken; setEditMode(true); }
+        else if(accountMode && shareRole==="edit"){ setEditMode(true); }
         paintChrome(); render(); if(!sessionStorage.getItem("kz_ui"))fit();
       }
       // verify stored passcode quietly
