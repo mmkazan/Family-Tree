@@ -1,71 +1,65 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Elaia — your trees</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <style>
+  /* Locked to LIGHT. Palette + fonts taken from the app (index.html). */
   :root{
-    --bg:#F2EEE4; --surface:#FBFAF6; --surface2:#F5F1E7;
-    --ink:#1E2C2A; --muted:#657573; --hair:#E1DCCE;
-    --teal:#0E767D; --teal-deep:#0B565C; --brass:#A6803C; --brass-wash:#F1E9D7;
-    --olive:#7E8C5A; --danger:#9A3B2E;
-    --shadow:0 1px 2px rgba(20,40,45,.05),0 10px 34px rgba(20,40,45,.08);
+    color-scheme:light;
+    --bg:#e9ebe4; --surface:#f8f8f3; --surface-2:#f1f2ea;
+    --ink:#17262b; --muted:#5d6b6f; --faint:#8a9599;
+    --accent:#1e5c6e; --accent-deep:#17495a; --accent-soft:#dbe6e6;
+    --brass:#b4894a; --olive:#6f9b6e; --line:#b7a98a; --hair:#d7d8cd; --danger:#a5453a;
+    --shadow:0 1px 2px rgba(23,38,43,.08),0 6px 18px rgba(23,38,43,.09);
+    --shadow-lg:0 12px 40px rgba(23,38,43,.16); --radius:11px;
   }
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-    --bg:#0C1619; --surface:#12242A; --surface2:#0E1E23;
-    --ink:#E8EEEC; --muted:#8CA2A4; --hair:#22383E;
-    --teal:#57C4CE; --teal-deep:#8AD8DF; --brass:#CBA45C; --brass-wash:#241E10;
-    --olive:#9CAB79; --danger:#E0866F;
-    --shadow:0 1px 2px rgba(0,0,0,.35),0 14px 40px rgba(0,0,0,.4);
-  }}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;
-    background-image:radial-gradient(120% 80% at 50% -8%, color-mix(in srgb,var(--olive) 10%,transparent), transparent 60%);}
-  .wrap{max-width:600px;margin:0 auto;padding:56px 22px 80px}
-  .serif{font-family:"Cormorant Garamond",Georgia,serif}
-  header.top{text-align:center;margin-bottom:34px}
+    font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:600px;margin:0 auto;padding:54px 22px 80px}
+  .serif{font-family:"GFS Didot",Georgia,"Times New Roman",serif;font-weight:400}
+  header.top{text-align:center;margin-bottom:32px}
   .brand{display:inline-flex;align-items:center;gap:11px}
-  .brand svg{width:34px;height:34px;color:var(--olive)}
-  .brand .name{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:2.5rem;letter-spacing:.02em;color:var(--ink);line-height:1}
-  .tagline{color:var(--muted);margin:.5em 0 0;font-size:1.02rem}
-  .card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--shadow);padding:26px 24px}
-  h2.serif{font-weight:600;font-size:1.5rem;margin:0 0 4px}
+  .brand svg{width:32px;height:32px;color:var(--olive)}
+  .brand .name{font-family:"GFS Didot",Georgia,serif;font-weight:400;font-size:2.4rem;letter-spacing:.5px;color:var(--ink);line-height:1}
+  .tagline{color:var(--muted);margin:.55em 0 0;font-size:1.02rem}
+  .card{background:var(--surface);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 24px}
+  h2.serif{font-size:1.55rem;margin:0 0 4px}
   .sub{color:var(--muted);margin:0 0 20px;font-size:.96rem}
-  label{display:block;font-size:.82rem;letter-spacing:.02em;color:var(--muted);font-weight:600;margin:0 0 6px}
-  input[type=email],input[type=text]{width:100%;border:1.5px solid var(--hair);background:var(--bg);color:var(--ink);
-    border-radius:10px;padding:12px 13px;font:inherit;font-size:1rem;outline:none;transition:.15s}
-  input:focus{border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 18%,transparent)}
-  .btn{border:none;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;font-size:.98rem;cursor:pointer;transition:.15s;
-    background:var(--teal);color:#fff}
-  .btn:hover{background:var(--teal-deep)}
-  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#08191d}}
+  label{display:block;font-size:.8rem;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 6px}
+  input[type=email],input[type=text]{width:100%;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);
+    border-radius:8px;padding:11px 12px;font:inherit;font-size:1rem;outline:none;transition:.15s}
+  input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .btn{border:1px solid var(--accent);border-radius:8px;padding:11px 18px;font:inherit;font-weight:600;font-size:.96rem;cursor:pointer;transition:.15s;
+    background:var(--accent);color:#fff}
+  .btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
   .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--hair)}
-  .btn.ghost:hover{border-color:var(--teal);color:var(--teal-deep);background:transparent}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent-deep);background:transparent}
   .btn.block{width:100%;justify-content:center;display:inline-flex;align-items:center;gap:8px}
-  .row{display:flex;gap:10px;align-items:center}
   .msg{margin-top:14px;font-size:.92rem;color:var(--muted);min-height:1.2em}
-  .msg.good{color:var(--teal-deep)} .msg.bad{color:var(--danger)}
+  .msg.good{color:var(--accent-deep)} .msg.bad{color:var(--danger)}
 
   .acctbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
   .acctbar .who{font-size:.92rem;color:var(--muted)} .acctbar .who b{color:var(--ink);font-weight:600}
   .trees{display:flex;flex-direction:column;gap:12px;margin:0 0 20px}
   .tree{display:flex;align-items:center;justify-content:space-between;gap:12px;
-    border:1px solid var(--hair);border-left:4px solid var(--olive);border-radius:12px;background:var(--surface2);padding:15px 16px;text-decoration:none;color:inherit;transition:.15s}
-  .tree:hover{border-color:var(--teal);border-left-color:var(--olive);transform:translateY(-1px)}
-  .tree .t-name{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:1.28rem;line-height:1.15}
+    border:1px solid var(--hair);border-left:4px solid var(--olive);border-radius:10px;background:var(--surface-2);padding:15px 16px;text-decoration:none;color:inherit;transition:.15s}
+  .tree:hover{border-color:var(--accent);border-left-color:var(--olive);transform:translateY(-1px);box-shadow:var(--shadow)}
+  .tree .t-name{font-family:"GFS Didot",Georgia,serif;font-size:1.3rem;line-height:1.15}
   .tree .t-meta{color:var(--muted);font-size:.85rem;margin-top:1px}
-  .tree .t-go{color:var(--teal-deep);font-weight:600;font-size:.9rem;white-space:nowrap}
-  .empty{text-align:center;color:var(--muted);padding:22px 8px;border:1px dashed var(--hair);border-radius:12px;margin-bottom:18px}
+  .tree .t-go{color:var(--accent-deep);font-weight:600;font-size:.9rem;white-space:nowrap}
+  .empty{text-align:center;color:var(--muted);padding:22px 8px;border:1px dashed var(--line);border-radius:10px;margin-bottom:18px}
   .divider{border:none;border-top:1px solid var(--hair);margin:20px 0}
   .newtree{display:flex;gap:10px}.newtree input{flex:1}
   @media(max-width:460px){.newtree{flex-direction:column}}
-  .foot{text-align:center;color:var(--muted);font-size:.8rem;margin-top:26px}
-  .spin{display:inline-block;width:15px;height:15px;border:2px solid color-mix(in srgb,var(--muted) 40%,transparent);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  .foot{text-align:center;color:var(--faint);font-size:.8rem;margin-top:26px}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--hair);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
   @keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -167,13 +161,29 @@
       box.innerHTML=list.map(function(t){
         var title=(t.title&&(t.title.en||t.title.el))||"Untitled tree";
         var n=t.people||0;
-        return '<a class="tree" href="/?id='+encodeURIComponent(t.id)+'">'+
-          '<span><span class="t-name">'+esc(title)+'</span><span class="t-meta">'+n+' '+(n===1?'person':'people')+'</span></span>'+
-          '<span class="t-go">Open →</span></a>';
+        return '<div class="tree-row" style="display:flex;align-items:stretch;gap:8px">'+
+          '<a class="tree" style="flex:1;margin:0" href="/?id='+encodeURIComponent(t.id)+'">'+
+            '<span><span class="t-name">'+esc(title)+'</span><span class="t-meta">'+n+' '+(n===1?'person':'people')+'</span></span>'+
+            '<span class="t-go">Open →</span></a>'+
+          '<button type="button" class="t-del" data-id="'+esc(t.id)+'" data-name="'+esc(title)+'" aria-label="Delete tree" title="Delete this tree" '+
+            'style="border:1px solid var(--hair);background:var(--surface-2);color:var(--muted);border-radius:10px;padding:0 14px;font:inherit;font-size:.82rem;cursor:pointer;white-space:nowrap;transition:.15s">Delete</button>'+
+        '</div>';
       }).join("");
+      Array.prototype.forEach.call(box.querySelectorAll(".t-del"),function(btn){
+        btn.addEventListener("click",function(){ deleteTree(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
+      });
     }).catch(function(){
       var box=document.getElementById("trees"); if(box) box.innerHTML='<div class="empty">Couldn’t load your trees — refresh to try again.</div>';
     });
+  }
+
+  function deleteTree(id,name){
+    if(!window.confirm('Permanently delete “'+(name||'this tree')+'”?\n\nThis removes the tree and all of its backups, for everyone you shared it with. It cannot be undone.')) return;
+    if(!window.confirm('Last check — this is permanent. Delete “'+(name||'this tree')+'”?')) return;
+    api("/api/tree-delete",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:id})})
+      .then(function(r){return r.json();})
+      .then(function(j){ if(j&&j.ok){ loadTrees(); } else { alert("Couldn’t delete just now — please try again."); } })
+      .catch(function(){ alert("Couldn’t delete just now — please try again."); });
   }
 
   boot();

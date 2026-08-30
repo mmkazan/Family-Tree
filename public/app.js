@@ -48,7 +48,7 @@
       shareTitle:"Share this tree", shareLede:"Send a link to family. A view link is read-only; an edit link lets them add and change people.",
       shViewLbl:"View link (read-only)", shEditLbl:"Edit link (can add & change)", copy:"Copy", copied:"Copied", shareDone:"Done",
       shPriv:"Require a link to view (private)", shPrivSub:"When on, nobody can open the tree without a link — even with the address.",
-      shRotate:"Reset links", shRotateConfirm:"Reset both links? Anyone using the old links will lose access.", shareNeedSave:"Unlock to edit first.", linkCopied:"Link copied.",
+      shRotate:"Reset links", shRotateConfirm:"Reset both links? Anyone using the old links will lose access.", shareNeedSave:"Unlock to edit first.", linkCopied:"Link copied.", shLangLbl:"Each link opens in:", shProtect:"Protect living people — hide their dates, places & photos on view-only links",
       tBorn:"Born", tRaised:"Raised", tEducated:"Educated", tWorked:"Worked", tLived:"Lived", tDied:"Died", tOther:"Other",
       readonly:"Viewing only — unlock with the family password to add or edit.",
       pcTitle:"Family edit access", pcLede:"Enter the family password to add and edit people.",
@@ -113,7 +113,7 @@
       shareTitle:"Κοινή χρήση δέντρου", shareLede:"Στείλτε σύνδεσμο στην οικογένεια. Ο σύνδεσμος προβολής είναι μόνο για ανάγνωση· ο σύνδεσμος επεξεργασίας επιτρέπει αλλαγές.",
       shViewLbl:"Σύνδεσμος προβολής (ανάγνωση)", shEditLbl:"Σύνδεσμος επεξεργασίας", copy:"Αντιγραφή", copied:"Αντιγράφηκε", shareDone:"Τέλος",
       shPriv:"Απαιτείται σύνδεσμος για προβολή (ιδιωτικό)", shPrivSub:"Όταν είναι ενεργό, κανείς δεν μπορεί να ανοίξει το δέντρο χωρίς σύνδεσμο.",
-      shRotate:"Επαναφορά συνδέσμων", shRotateConfirm:"Επαναφορά συνδέσμων; Όσοι χρησιμοποιούν τους παλιούς θα χάσουν πρόσβαση.", shareNeedSave:"Ξεκλειδώστε πρώτα.", linkCopied:"Ο σύνδεσμος αντιγράφηκε.",
+      shRotate:"Επαναφορά συνδέσμων", shRotateConfirm:"Επαναφορά συνδέσμων; Όσοι χρησιμοποιούν τους παλιούς θα χάσουν πρόσβαση.", shareNeedSave:"Ξεκλειδώστε πρώτα.", linkCopied:"Ο σύνδεσμος αντιγράφηκε.", shLangLbl:"Κάθε σύνδεσμος ανοίγει στα:", shProtect:"Προστασία ζώντων — απόκρυψη ημερομηνιών, τόπων & φωτογραφιών στους συνδέσμους προβολής",
       tBorn:"Γέννηση", tRaised:"Μεγάλωσε", tEducated:"Σπούδασε", tWorked:"Εργάστηκε", tLived:"Έζησε", tDied:"Θάνατος", tOther:"Άλλο",
       readonly:"Μόνο προβολή — ξεκλειδώστε με τον οικογενειακό κωδικό για επεξεργασία.",
       pcTitle:"Πρόσβαση επεξεργασίας", pcLede:"Εισάγετε τον οικογενειακό κωδικό για να προσθέσετε ή να επεξεργαστείτε άτομα.",
@@ -176,6 +176,9 @@
     if(m&&m[1]){ shareToken=decodeURIComponent(m[1]); tokenFromUrl=true; try{ localStorage.setItem("kz_token",shareToken); }catch(e){} }
     else { try{ shareToken=localStorage.getItem("kz_token")||""; }catch(e){} }
   })();
+  // per-link language — a share link can pin the language it opens in (…#k=…&lang=el)
+  (function(){ var lm=(location.hash||"").match(/[#&]lang=(el|en)\b/) || (location.search||"").match(/[?&]lang=(el|en)\b/); if(lm&&lm[1]) lang=lm[1]; })();
+  var shareLang="en", lastShareTokens=null;
   function stripTokenFromUrl(){ if(!tokenFromUrl)return; tokenFromUrl=false;
     // NB: window.history — a local `var history` (undo/redo stack) shadows it in this closure
     try{ window.history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
@@ -1600,17 +1603,24 @@
 
   /* ================= Share: magic links (view / edit) ================= */
   function shareOrigin(){ return location.origin + location.pathname; }
-  function buildLink(token){ return shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; }
+  function buildLink(token){ var u=shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; if(shareLang && !isMono()) u+="&lang="+shareLang; return u; }
+  function refillShareUrls(){ if(!lastShareTokens)return; $("shViewUrl").value=buildLink(lastShareTokens.viewToken); $("shEditUrl").value=buildLink(lastShareTokens.editToken); }
+  function setShareLang(l){ shareLang=(l==="el"?"el":"en"); var en=$("shLangEn"),el=$("shLangEl"); if(en)en.setAttribute("aria-pressed",shareLang==="en"); if(el)el.setAttribute("aria-pressed",shareLang==="el"); refillShareUrls(); }
   function shareApi(action, extra){ var body={share:action}; if(!accountMode)body.passcode=passcode; if(extra)for(var k in extra)body[k]=extra[k];
     return fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
-  function fillShare(j){ if(!j)return; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); $("shareMsg").textContent=""; }
+  function fillShare(j){ if(!j)return; lastShareTokens=j; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); if($("shProtect")&&typeof j.hideLiving==="boolean")$("shProtect").checked=j.hideLiving; $("shareMsg").textContent=""; }
   function openShare(){
     if(!passcode && !accountMode){ toast(T("shareNeedSave")); openPasscode(); return; }
     $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=T("shareLede");
     $("shViewLbl").textContent=T("shViewLbl"); $("shEditLbl").textContent=T("shEditLbl");
     $("shViewCopy").textContent=T("copy"); $("shEditCopy").textContent=T("copy");
     $("shRotate").textContent=T("shRotate"); $("shareDone").textContent=T("shareDone");
+    if($("shLangLbl"))$("shLangLbl").textContent=T("shLangLbl");
+    if($("shProtectLbl"))$("shProtectLbl").textContent=T("shProtect");
+    if($("shLangEl"))$("shLangEl").textContent=secondLangInfo().tag;
+    var _ls=$("shLangSeg"); if(_ls)_ls.style.display=isMono()?"none":"";
     $("shViewUrl").value=""; $("shEditUrl").value=""; $("shareMsg").textContent="…";
+    lastShareTokens=null; setShareLang(lang);   // each link defaults to the owner's current language
     $("shareModal").classList.add("open");
     shareApi("get").then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); });
   }
@@ -1626,6 +1636,9 @@
   $("shViewCopy").addEventListener("click",function(){ if($("shViewUrl").value)copyText($("shViewUrl").value,this); });
   $("shEditCopy").addEventListener("click",function(){ if($("shEditUrl").value)copyText($("shEditUrl").value,this); });
   $("shRotate").addEventListener("click",function(){ if(!window.confirm(T("shRotateConfirm")))return; $("shareMsg").textContent="…"; shareApi("rotate").then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); }); });
+  if($("shLangEn"))$("shLangEn").addEventListener("click",function(){ setShareLang("en"); });
+  if($("shLangEl"))$("shLangEl").addEventListener("click",function(){ setShareLang("el"); });
+  if($("shProtect"))$("shProtect").addEventListener("change",function(){ var v=this.checked; $("shareMsg").textContent="…"; shareApi("get",{hideLiving:v}).then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); }); });
   document.addEventListener("click",function(){ closePops(); });
 
   /* ================= GEDCOM 5.5.1 export ================= */

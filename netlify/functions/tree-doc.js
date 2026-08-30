@@ -40,13 +40,16 @@ export default async (req) => {
     // ----- share management (owner only) -----
     if (body && body.share) {
       if (!isOwner) return json({ error: "unauthorized" }, 401);
-      let share = doc.share || {};
-      if (body.share === "rotate" || !share.viewToken || !share.editToken) {
-        share = { viewToken: randomToken(16), editToken: randomToken(16) };
+      const prev = doc.share || {};
+      let share = prev;
+      if (body.share === "rotate" || !prev.viewToken || !prev.editToken) {
+        share = { viewToken: randomToken(16), editToken: randomToken(16), hideLiving: prev.hideLiving };
       }
       share.private = true;   // always private
+      if (typeof body.hideLiving === "boolean") share.hideLiving = body.hideLiving;
+      if (share.hideLiving === undefined) share.hideLiving = true;   // default: protect the living
       await trees().setJSON(id, { ...doc, share, updatedAt: Date.now() });
-      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true });
+      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true, hideLiving: share.hideLiving });
     }
 
     // ----- save (owner OR valid edit token) -----

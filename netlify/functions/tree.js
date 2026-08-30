@@ -1,4 +1,5 @@
 import { getStore } from "@netlify/blobs";
+import { redactLiving } from "../shared/tenant.js";
 
 // Shared family-tree document, stored as a single JSON blob.
 //
@@ -40,10 +41,13 @@ function roleFor(doc, token, passcodeOk) {
 // what GET returns to a client: the tree, without the secret share tokens
 function publicDoc(doc, role) {
   const s = doc.share || null;
+  const hideLiving = !s || s.hideLiving !== false;   // default ON
+  let people = doc.people || {};
+  if (role === "view" && hideLiving) people = redactLiving(people);
   return {
-    title: doc.title, people: doc.people || {}, config: doc.config,
+    title: doc.title, people, config: doc.config,
     version: doc.version || 0, updated: doc.updated || 0,
-    role, private: true,
+    role, private: true, hideLiving,
   };
 }
 
@@ -79,14 +83,17 @@ export default async (req) => {
     // ----- sharing management (owner / passcode only) -----
     if (body && body.share) {
       if (!passcodeOk) return json({ error: "unauthorized" }, 401);
-      let share = current.share || {};
-      if (body.share === "rotate" || !share.viewToken || !share.editToken) {
-        share = { viewToken: tok(), editToken: tok() };
+      const prev = current.share || {};
+      let share = prev;
+      if (body.share === "rotate" || !prev.viewToken || !prev.editToken) {
+        share = { viewToken: tok(), editToken: tok(), hideLiving: prev.hideLiving };
       }
       share.private = true;   // always private
+      if (typeof body.hideLiving === "boolean") share.hideLiving = body.hideLiving;
+      if (share.hideLiving === undefined) share.hideLiving = true;   // default: protect the living
       const next = { ...current, share, version: current.version || 0, updated: Date.now() };
       await store.setJSON(KEY, next);
-      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true });
+      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true, hideLiving: share.hideLiving });
     }
 
     // ----- save a new version (passcode OR a valid edit token) -----

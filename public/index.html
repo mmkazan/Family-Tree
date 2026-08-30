@@ -596,6 +596,21 @@
     <h2 id="shareTitle"></h2><p class="lede" id="shareLede"></p>
     <div class="share-link"><div class="sl-head"><span class="sl-lbl" id="shViewLbl"></span></div><div class="sl-row"><input id="shViewUrl" readonly /><button class="btn" id="shViewCopy"></button></div></div>
     <div class="share-link"><div class="sl-head"><span class="sl-lbl" id="shEditLbl"></span></div><div class="sl-row"><input id="shEditUrl" readonly /><button class="btn" id="shEditCopy"></button></div></div>
+    <style>
+      #shareModal .share-opts{margin:14px 0 2px;display:flex;flex-direction:column;gap:11px}
+      #shareModal .so-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+      #shareModal .so-lbl{font-size:.92rem;color:var(--muted,#5d6b6f)}
+      #shareModal #shLangSeg{display:inline-flex;border:1px solid var(--hair,#d7d8cd);border-radius:8px;overflow:hidden}
+      #shareModal .lang-btn{border:0;background:transparent;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer;color:var(--muted,#5d6b6f)}
+      #shareModal .lang-btn[aria-pressed="true"]{background:var(--accent,#1e5c6e);color:#fff}
+      #shareModal .so-check{display:flex;align-items:flex-start;gap:9px;font-size:.9rem;color:var(--muted,#5d6b6f);cursor:pointer;line-height:1.35}
+      #shareModal .so-check input{margin-top:2px;flex:0 0 auto}
+    </style>
+    <div class="share-opts">
+      <div class="so-row"><span class="so-lbl" id="shLangLbl"></span>
+        <span class="lang-seg" id="shLangSeg"><button type="button" class="lang-btn" id="shLangEn">EN</button><button type="button" class="lang-btn" id="shLangEl"></button></span></div>
+      <label class="so-check"><input type="checkbox" id="shProtect"><span id="shProtectLbl"></span></label>
+    </div>
     <div class="share-msg" id="shareMsg"></div>
     <div class="row-end"><button class="link-danger" id="shRotate"></button><div class="spacer"></div><button class="btn primary" id="shareDone"></button></div>
   </div>

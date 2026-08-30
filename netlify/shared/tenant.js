@@ -12,18 +12,40 @@ export function roleFor(doc, token, isOwner) {
   return "none";
 }
 
+// Privacy: on view-only links, living people show name + structure only.
+// Deceased are shown in full. Keeps rels + positions so the tree still renders,
+// but no DOB, places, notes, photos or media of the living leak on a public link.
+export function redactLiving(people) {
+  const out = {};
+  for (const id of Object.keys(people || {})) {
+    const p = people[id] || {};
+    if (p.death) { out[id] = p; continue; }            // deceased: full detail
+    out[id] = {                                        // living: name + shape only
+      id: p.id, nameEn: p.nameEn, nameEl: p.nameEl, sex: p.sex,
+      x: p.x, y: p.y,
+      parents: p.parents || [], partners: p.partners || [], guardians: p.guardians || [],
+      living: true, redacted: true,
+    };
+  }
+  return out;
+}
+
 // What a client is allowed to see: never the ownerId or the secret share tokens.
 export function publicDoc(doc, role) {
   const s = doc.share || null;
+  const hideLiving = !s || s.hideLiving !== false;     // default ON
+  let people = doc.people || {};
+  if (role === "view" && hideLiving) people = redactLiving(people);
   return {
     id: doc.id,
     title: doc.title,
-    people: doc.people || {},
+    people,
     config: doc.config,
     version: doc.version || 0,
     updated: doc.updated || doc.updatedAt || 0,
     role,
     private: true,
+    hideLiving,
   };
 }
 
