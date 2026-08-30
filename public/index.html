@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kazantzis Family Tree</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css" crossorigin="" />
+<style>
+  :root{
+    --bg:#e9ebe4; --stage:#eef0e9; --surface:#f8f8f3; --surface-2:#f1f2ea;
+    --ink:#17262b; --muted:#5d6b6f; --faint:#8a9599;
+    --accent:#1e5c6e; --accent-soft:#dbe6e6; --brass:#b4894a; --brass-soft:#e6d6b8;
+    --line:#b7a98a; --hair:#d7d8cd; --danger:#a5453a;
+    --born:#1e5c6e; --raised:#6f9b6e; --educated:#b4894a; --worked:#4a6f9e; --lived:#9e6b8a; --died:#7d746b; --other:#8a9599;
+    --shadow:0 1px 2px rgba(23,38,43,.08),0 6px 18px rgba(23,38,43,.09);
+    --shadow-lg:0 12px 40px rgba(23,38,43,.22);
+    --radius:11px; --card-w:210px;
+  }
+  :root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
+    --bg:#0f1a1d; --stage:#12201f; --surface:#182a2d; --surface-2:#14252a;
+    --ink:#e9e7dd; --muted:#a6b3b3; --faint:#6f807f;
+    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120;
+    --line:#8a7a54; --hair:#26383b; --danger:#d98a80;
+    --born:#5aa7ba; --raised:#8bb46a; --educated:#d0a45e; --worked:#6f97c9; --lived:#c08bab; --died:#9a9086; --other:#7f908f;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+    --shadow-lg:0 16px 44px rgba(0,0,0,.6);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#0f1a1d; --stage:#12201f; --surface:#182a2d; --surface-2:#14252a;
+    --ink:#e9e7dd; --muted:#a6b3b3; --faint:#6f807f;
+    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120;
+    --line:#8a7a54; --hair:#26383b; --danger:#d98a80;
+    --born:#5aa7ba; --raised:#8bb46a; --educated:#d0a45e; --worked:#6f97c9; --lived:#c08bab; --died:#9a9086; --other:#7f908f;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+    --shadow-lg:0 16px 44px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;}
+  .app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--surface);
+    border-bottom:1px solid var(--hair);box-shadow:var(--shadow);z-index:600;position:relative;}
+  .crest{width:34px;height:34px;flex:0 0 auto;color:var(--brass)}
+  .titles{min-width:0}
+  .fam{font-family:"GFS Didot",Georgia,"Times New Roman",serif;font-size:26px;line-height:1;letter-spacing:.3px;
+    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .fam .alt{color:var(--muted);font-size:19px;margin-left:8px}
+  .sub{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:4px}
+  .spacer{flex:1}
+  .toolbar{display:flex;align-items:center;gap:8px}
+
+  .seg{display:inline-flex;border:1px solid var(--hair);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+  .seg button{border:0;background:transparent;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;
+    letter-spacing:.03em;padding:7px 13px;cursor:pointer;transition:background .15s,color .15s;display:inline-flex;align-items:center;gap:6px}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  :root[data-theme="dark"] .seg button[aria-pressed="true"],
+  :root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#08161a}
+  .seg button svg{width:15px;height:15px}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:13.5px;font-weight:500;
+    border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);padding:8px 13px;border-radius:9px;cursor:pointer;
+    transition:background .15s,border-color .15s,transform .05s;}
+  .btn:hover{background:var(--accent-soft);border-color:var(--accent)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  :root[data-theme="dark"] .btn.primary,:root:not([data-theme="light"]) .btn.primary{color:#08161a}
+  .btn .ic{width:16px;height:16px;flex:0 0 auto}
+  .icon-btn{width:38px;height:38px;padding:0;justify-content:center;border-radius:9px}
+  .btn[disabled]{opacity:.5;cursor:default}
+  body:not(.editmode) .edit-only{display:none !important}
+
+  /* Stage / tree */
+  .stagewrap{position:relative;flex:1;min-height:0}
+  .viewport{position:absolute;inset:0;overflow:hidden;
+    background:radial-gradient(circle at 1px 1px, var(--hair) 1px, transparent 0) 0 0/26px 26px, var(--stage);
+    cursor:grab;touch-action:none;}
+  .viewport.grabbing{cursor:grabbing}
+  #stage{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform}
+  #wires{position:absolute;top:0;left:0;overflow:visible;pointer-events:none}
+  body.mapview .viewport{display:none}
+  #map{position:absolute;inset:0;display:none;background:var(--stage);z-index:1}
+  body.mapview #map{display:block}
+  :root[data-theme="dark"] .leaflet-tile,
+  :root:not([data-theme="light"]) .leaflet-tile{ @media (prefers-color-scheme:dark){ filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9); } }
+  :root[data-theme="dark"] .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}
+
+  .card{position:absolute;width:var(--card-w);background:var(--surface);border:1px solid var(--hair);
+    border-radius:var(--radius);padding:11px 13px 10px;box-shadow:var(--shadow);cursor:pointer;
+    transition:border-color .15s,box-shadow .15s;}
+  .card:hover{border-color:var(--accent);box-shadow:var(--shadow-lg)}
+  .card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .card.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),var(--shadow)}
+  .card .status{position:absolute;top:11px;right:12px;font-size:12px;line-height:1;color:var(--faint)}
+  .card .status.live{width:7px;height:7px;border-radius:50%;background:var(--brass);box-shadow:0 0 0 3px var(--brass-soft)}
+  .chead{display:flex;gap:10px;align-items:flex-start;padding-right:14px}
+  .avatar{width:42px;height:42px;flex:0 0 auto;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;font-family:"GFS Didot",Georgia,serif;font-size:19px;line-height:1;
+    background-size:cover;background-position:center;overflow:hidden;border:1px solid var(--hair);}
+  .avatar.dec{filter:grayscale(.3) contrast(.96)}
+  .cmeta{min-width:0;flex:1}
+  .nm{overflow:hidden}
+  .nm.primary{font-size:15px;font-weight:700;line-height:1.18;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+  .nm.primary.empty{font-weight:400;font-style:italic;color:var(--muted)}
+  .nm.secondary{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cfoot{display:flex;align-items:center;gap:8px;margin-top:9px}
+  .yrs{font-size:12px;color:var(--faint);flex:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;display:flex;align-items:center;gap:5px}
+  .yrs .dag{color:var(--line)}
+  .chips{display:flex;gap:6px;flex:0 0 auto}
+  .chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);background:var(--surface-2);
+    border:1px solid var(--hair);border-radius:999px;padding:1px 7px 1px 6px;font-variant-numeric:tabular-nums}
+  .chip svg{width:11px;height:11px}
+  .chip.pin{color:#fff;border:0}
+
+  .empty-hero{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);text-align:center;max-width:340px}
+  .empty-hero .eh-crest{width:56px;height:56px;color:var(--brass);opacity:.8;margin-bottom:6px}
+  .empty-hero h2{font-family:"GFS Didot",Georgia,serif;font-weight:400;font-size:24px;margin:.2em 0 .3em;color:var(--ink);text-wrap:balance}
+  .empty-hero p{color:var(--muted);font-size:14.5px;line-height:1.5;margin:0 0 18px}
+
+  .zoom{position:absolute;right:16px;bottom:16px;z-index:15;display:flex;flex-direction:column;gap:6px}
+  body.mapview .zoom{display:none}
+  .zoom .icon-btn{background:var(--surface);box-shadow:var(--shadow)}
+
+  .status-pill{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:16;
+    display:none;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--brass);color:var(--ink);
+    padding:8px 14px;border-radius:999px;font-size:13px;box-shadow:var(--shadow);max-width:92%}
+  .status-pill .ic{width:15px;height:15px;color:var(--brass);flex:0 0 auto}
+  body:not(.editmode) .status-pill.ro{display:flex}
+  body.mapview .status-pill{display:none}
+
+  /* Map legend + filter */
+  .maptools{position:absolute;left:16px;top:16px;z-index:500;display:none;flex-direction:column;gap:10px;max-width:230px}
+  body.mapview .maptools{display:flex}
+  .mapcard{background:var(--surface);border:1px solid var(--hair);border-radius:11px;box-shadow:var(--shadow);padding:12px 13px}
+  .mapcard h4{margin:0 0 9px;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);font-weight:700}
+  .mapcard select{width:100%;font-family:inherit;font-size:13.5px;padding:8px 9px;border-radius:8px;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink)}
+  .legend{display:flex;flex-direction:column;gap:7px}
+  .legend button{display:flex;align-items:center;gap:9px;background:transparent;border:0;cursor:pointer;color:var(--ink);font-family:inherit;font-size:13px;padding:2px 0;text-align:left;width:100%}
+  .legend button .sw{width:12px;height:12px;border-radius:50%;flex:0 0 auto;border:2px solid var(--surface)}
+  .legend button.off{opacity:.38}
+  .legend button .ct{margin-left:auto;color:var(--faint);font-size:12px;font-variant-numeric:tabular-nums}
+
+  /* Drawer */
+  .scrim{position:fixed;inset:0;background:rgba(10,18,20,.34);opacity:0;pointer-events:none;transition:opacity .2s;z-index:700}
+  .scrim.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:390px;max-width:92vw;background:var(--surface);
+    border-left:1px solid var(--hair);box-shadow:var(--shadow-lg);z-index:800;
+    transform:translateX(102%);transition:transform .24s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
+  .drawer.open{transform:none}
+  .drawer-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--hair)}
+  .drawer-head h3{margin:0;font-family:"GFS Didot",Georgia,serif;font-weight:400;font-size:20px;flex:1;line-height:1.2}
+  .drawer-body{padding:16px 18px;overflow-y:auto;flex:1}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:5px;font-weight:700}
+  .field input,.field textarea{width:100%;font-family:inherit;font-size:14.5px;color:var(--ink);background:var(--surface-2);
+    border:1px solid var(--hair);border-radius:8px;padding:9px 11px;transition:border-color .15s,box-shadow .15s;}
+  .field input.el,.field textarea.el{font-size:15px}
+  .field input:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .field textarea{resize:vertical;min-height:66px;line-height:1.45}
+  .two{display:flex;gap:10px}.two .field{flex:1}
+  .sec-title{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);font-weight:700;
+    margin:20px 0 9px;padding-top:16px;border-top:1px solid var(--hair)}
+  .rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rel-grid .btn{justify-content:center}
+  .drawer-foot{display:flex;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid var(--hair);background:var(--surface)}
+  .drawer-foot .spacer{flex:1}
+  .link-danger{background:transparent;border:0;color:var(--danger);font-family:inherit;font-size:13px;cursor:pointer;
+    padding:8px 6px;border-radius:7px;display:inline-flex;align-items:center;gap:6px}
+  .link-danger .ic{width:15px;height:15px}
+
+  /* Photo uploader */
+  .photo-edit{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .photo-thumb{width:74px;height:74px;border-radius:50%;flex:0 0 auto;overflow:hidden;background:var(--accent-soft);color:var(--accent);
+    border:1px solid var(--hair);display:flex;align-items:center;justify-content:center;font-family:"GFS Didot",Georgia,serif;font-size:30px;background-size:cover;background-position:center;}
+  .photo-actions{display:flex;flex-direction:column;gap:7px}
+  .mini{font-family:inherit;font-size:12.5px;padding:7px 12px;border-radius:8px;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);cursor:pointer}
+  .mini:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .mini.ghost{border:0;background:transparent;color:var(--muted);padding-left:2px}
+  .mini.ghost:hover{color:var(--danger)}
+
+  /* Media + place rows */
+  .media-row{display:grid;grid-template-columns:92px 1fr auto;gap:7px 8px;margin-bottom:9px;align-items:center}
+  .media-row select,.media-row input{font-family:inherit;font-size:13px;padding:8px 9px;border-radius:7px;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);width:100%}
+  .media-row select:focus,.media-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .media-row .m-url{grid-column:1 / -1}
+  .rm{border:0;background:transparent;color:var(--faint);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1}
+  .rm:hover{color:var(--danger)}
+  .add-row{margin-top:2px;font-size:13px}
+
+  .place-row{border:1px solid var(--hair);border-radius:9px;padding:9px;margin-bottom:9px;background:var(--surface-2)}
+  .place-row .pr-top{display:grid;grid-template-columns:1fr 66px auto;gap:7px;align-items:center;margin-bottom:7px}
+  .place-row select,.place-row input{font-family:inherit;font-size:13px;padding:8px 9px;border-radius:7px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);width:100%}
+  .place-row .pr-find{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center}
+  .place-row .findbtn{white-space:nowrap;font-size:12.5px;padding:8px 10px}
+  .place-row .coordtag{font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px;color:var(--faint)}
+  .place-row .coordtag.set{color:var(--raised)}
+  .geo-results{margin-top:6px;border:1px solid var(--hair);border-radius:8px;overflow:hidden;background:var(--surface);display:none}
+  .geo-results.open{display:block}
+  .geo-results button{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);
+    font-family:inherit;font-size:13px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--hair)}
+  .geo-results button:last-child{border-bottom:0}
+  .geo-results button:hover{background:var(--accent-soft)}
+
+  /* Read-only profile */
+  .profile .p-photo{width:98px;height:98px;border-radius:50%;margin:2px auto 14px;overflow:hidden;background:var(--accent-soft);color:var(--accent);
+    border:1px solid var(--hair);display:flex;align-items:center;justify-content:center;font-family:"GFS Didot",Georgia,serif;font-size:40px;background-size:cover;background-position:center}
+  .profile .p-photo.dec{filter:grayscale(.3)}
+  .profile .p-name{text-align:center;font-family:"GFS Didot",Georgia,serif;font-size:24px;line-height:1.2;text-wrap:balance}
+  .profile .p-alt{text-align:center;color:var(--muted);font-size:15px;margin-top:3px}
+  .profile .p-dates{text-align:center;color:var(--faint);font-size:13.5px;margin-top:9px;font-variant-numeric:tabular-nums}
+  .profile .p-field{margin-top:17px}
+  .profile .p-field .k{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:5px}
+  .profile .p-field .v{font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .p-places{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+  .p-place{display:flex;align-items:center;gap:10px;font-size:14px}
+  .p-place .sw{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .p-place .pt{color:var(--faint);font-size:12px;min-width:74px}
+  .p-place .pl{flex:1}
+  .p-place .py{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums}
+  .p-media{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .p-mediabtn{display:flex;align-items:center;gap:11px;text-decoration:none;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink);
+    padding:11px 13px;border-radius:9px;font-size:14px;transition:border-color .15s,background .15s}
+  .p-mediabtn:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .p-mediabtn .mi{width:18px;height:18px;flex:0 0 auto;color:var(--accent)}
+  .p-mediabtn .ml{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .p-mediabtn .go{color:var(--faint);font-size:13px}
+
+  /* Modals */
+  .modal{position:fixed;inset:0;z-index:900;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,18,20,.44)}
+  .modal.open{display:flex}
+  .modal .box{background:var(--surface);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--shadow-lg);max-width:460px;width:100%;padding:26px;max-height:86vh;overflow-y:auto}
+  .modal h2{font-family:"GFS Didot",Georgia,serif;font-weight:400;font-size:23px;margin:0 0 4px}
+  .modal .lede{color:var(--muted);font-size:14px;margin:0 0 18px}
+  .modal ol{margin:0 0 8px;padding-left:20px}
+  .modal li{margin-bottom:11px;line-height:1.5;font-size:14.5px}
+  .modal li b{color:var(--accent)}
+  .modal .note{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:12px 14px;line-height:1.5;margin-top:6px;border:1px solid var(--hair)}
+  .modal .close-x{float:right;margin:-6px -6px 0 0}
+  .modal .pc-field{margin:14px 0}
+  .modal .pc-field input{width:100%;font-family:inherit;font-size:16px;padding:11px 13px;border-radius:9px;border:1px solid var(--hair);background:var(--surface-2);color:var(--ink)}
+  .modal .pc-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .modal .pc-err{color:var(--danger);font-size:13px;margin:6px 2px 0;min-height:16px}
+  .modal .row-end{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);
+    padding:10px 18px;border-radius:999px;font-size:13.5px;box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;
+    transition:opacity .2s,transform .2s;z-index:950}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .save-ind{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px;margin-right:2px}
+  .save-ind .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .save-ind.saving .dot{background:var(--brass)}
+  .save-ind.saved .dot{background:var(--raised)}
+
+  @media (max-width:620px){
+    .fam{font-size:20px}.fam .alt{font-size:14px}
+    .btn .lbl{display:none}.btn{padding:8px 10px}
+    .seg button .lbl{display:none}
+    .drawer{width:100%}
+    header{gap:8px;padding:10px 12px}
+    .maptools{max-width:190px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+  .kz-pin span{display:block;width:15px;height:15px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.4)}
+  .leaflet-popup-content{font-family:"Alegreya Sans",sans-serif;margin:11px 13px}
+  .kzpop .n{font-weight:700;font-size:14.5px}
+  .kzpop .t{font-size:12.5px;color:#555;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <svg class="crest" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2.5c2.2 2.4 5 3.3 7.5 3.3-.2 6.6-3 11.4-7.5 13.7C7.5 17.2 4.7 12.4 4.5 5.8 7 5.8 9.8 4.9 12 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M12 7v7M9 10.5h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    <div class="titles"><div class="fam" id="famTitle"></div><div class="sub" id="subTitle"></div></div>
+    <div class="spacer"></div>
+    <div class="toolbar">
+      <div class="save-ind" id="saveInd" title=""><span class="dot"></span><span id="saveTxt"></span></div>
+      <div class="seg" role="group" aria-label="View">
+        <button id="viewTree" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v6M6 20v-4a2 2 0 012-2h8a2 2 0 012 2v4M12 10v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="9" y="2" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.7"/></svg><span class="lbl" id="viewTreeLbl"></span></button>
+        <button id="viewMap" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 4v14M15 6v14" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl" id="viewMapLbl"></span></button>
+      </div>
+      <div class="seg" role="group" aria-label="Language">
+        <button id="langEl" aria-pressed="false" lang="el">ΕΛ</button>
+        <button id="langEn" aria-pressed="true">EN</button>
+      </div>
+      <button class="btn edit-only" id="addBtn"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="lbl" id="addLbl"></span></button>
+      <button class="btn" id="editBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" id="editIcon"><path d="M6 10V8a6 6 0 1112 0v2" stroke="currentColor" stroke-width="1.6"/><rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl" id="editLbl"></span></button>
+      <button class="btn icon-btn" id="helpBtn" aria-label="Help"><svg class="ic" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9.6 9.4c.2-1.3 1.2-2.1 2.5-2.1 1.4 0 2.4.8 2.4 2 0 1.1-.7 1.6-1.6 2.2-.8.5-1.2 1-1.2 1.9v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg></button>
+    </div>
+  </header>
+
+  <div class="stagewrap">
+    <div class="viewport" id="viewport">
+      <div class="status-pill ro" id="roPill"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M6 10V8a6 6 0 1112 0v2" stroke="currentColor" stroke-width="1.6"/><rect x="4.5" y="10" width="15" height="10" rx="2.2" stroke="currentColor" stroke-width="1.6"/></svg><span id="roText"></span></div>
+      <div id="stage"><svg id="wires"></svg></div>
+      <div class="empty-hero" id="emptyHero" hidden>
+        <svg class="eh-crest" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5c2.2 2.4 5 3.3 7.5 3.3-.2 6.6-3 11.4-7.5 13.7C7.5 17.2 4.7 12.4 4.5 5.8 7 5.8 9.8 4.9 12 2.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        <h2 id="ehTitle"></h2><p id="ehText"></p>
+        <button class="btn primary edit-only" id="ehAdd"></button>
+      </div>
+      <div class="zoom">
+        <button class="btn icon-btn" id="zIn" aria-label="Zoom in"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="btn icon-btn" id="zOut" aria-label="Zoom out"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M6 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button class="btn icon-btn" id="zFit" aria-label="Fit"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4M20 15v4a1 1 0 01-1 1h-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div class="maptools">
+      <div class="mapcard"><h4 id="mtPersonLbl"></h4><select id="mapPerson"></select></div>
+      <div class="mapcard"><h4 id="mtLegendLbl"></h4><div class="legend" id="legend"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Person">
+  <div class="drawer-head"><h3 id="drawerTitle"></h3>
+    <button class="btn icon-btn" id="drawerClose" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot edit-only" id="drawerFoot">
+    <button class="link-danger" id="delBtn"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="delLbl"></span></button>
+    <div class="spacer"></div>
+    <button class="btn primary" id="saveBtn"></button>
+  </div>
+</aside>
+
+<div class="modal" id="pcModal" role="dialog" aria-modal="true" aria-label="Edit access">
+  <div class="box">
+    <h2 id="pcTitle"></h2>
+    <p class="lede" id="pcLede"></p>
+    <div class="pc-field"><input type="password" id="pcInput" autocomplete="off" /></div>
+    <div class="pc-err" id="pcErr"></div>
+    <div class="row-end"><button class="btn" id="pcCancel"></button><button class="btn primary" id="pcOk"></button></div>
+  </div>
+</div>
+
+<div class="modal" id="helpModal" role="dialog" aria-modal="true" aria-label="How this works">
+  <div class="box">
+    <button class="btn icon-btn close-x" id="helpClose" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <h2 id="helpTitle"></h2><p class="lede" id="helpLede"></p><ol id="helpSteps"></ol>
+    <div class="note" id="helpNote"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js" crossorigin=""></script>
+<script src="/app.js"></script>
+</body>
+</html>

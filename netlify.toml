@@ -1,0 +1,12 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Nice URL for the API (also set via the function's own `config.path`)
+[[redirects]]
+  from = "/api/tree"
+  to = "/.netlify/functions/tree"
+  status = 200
