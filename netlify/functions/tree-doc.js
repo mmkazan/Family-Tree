@@ -27,7 +27,7 @@ export default async (req) => {
   if (req.method === "GET") {
     const token = url.searchParams.get("k") || req.headers.get("x-tree-token") || "";
     const role = roleFor(doc, token, isOwner);
-    if (doc.share && doc.share.private && role === "none") return json({ error: "private" }, 401);
+    if (role === "none") return json({ error: "private" }, 401);   // trees are always private
     return json(publicDoc(doc, role));
   }
 
@@ -42,11 +42,11 @@ export default async (req) => {
       if (!isOwner) return json({ error: "unauthorized" }, 401);
       let share = doc.share || {};
       if (body.share === "rotate" || !share.viewToken || !share.editToken) {
-        share = { viewToken: randomToken(16), editToken: randomToken(16), private: !!share.private };
+        share = { viewToken: randomToken(16), editToken: randomToken(16) };
       }
-      if (body.share === "setPrivate") share.private = !!body.private;
+      share.private = true;   // always private
       await trees().setJSON(id, { ...doc, share, updatedAt: Date.now() });
-      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: !!share.private });
+      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true });
     }
 
     // ----- save (owner OR valid edit token) -----

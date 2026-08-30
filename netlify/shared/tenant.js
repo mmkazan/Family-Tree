@@ -23,7 +23,7 @@ export function publicDoc(doc, role) {
     version: doc.version || 0,
     updated: doc.updated || doc.updatedAt || 0,
     role,
-    private: !!(s && s.private),
+    private: true,
   };
 }
 

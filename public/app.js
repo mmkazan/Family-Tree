@@ -1603,13 +1603,12 @@
   function buildLink(token){ return shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; }
   function shareApi(action, extra){ var body={share:action}; if(!accountMode)body.passcode=passcode; if(extra)for(var k in extra)body[k]=extra[k];
     return fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
-  function fillShare(j){ if(!j)return; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); $("shPrivate").checked=!!j.private; $("shareMsg").textContent=""; }
+  function fillShare(j){ if(!j)return; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); $("shareMsg").textContent=""; }
   function openShare(){
     if(!passcode && !accountMode){ toast(T("shareNeedSave")); openPasscode(); return; }
     $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=T("shareLede");
     $("shViewLbl").textContent=T("shViewLbl"); $("shEditLbl").textContent=T("shEditLbl");
     $("shViewCopy").textContent=T("copy"); $("shEditCopy").textContent=T("copy");
-    $("shPrivLbl").textContent=T("shPriv"); $("shPrivSub").textContent=T("shPrivSub");
     $("shRotate").textContent=T("shRotate"); $("shareDone").textContent=T("shareDone");
     $("shViewUrl").value=""; $("shEditUrl").value=""; $("shareMsg").textContent="…";
     $("shareModal").classList.add("open");
@@ -1626,8 +1625,6 @@
   $("shareModal").addEventListener("click",function(e){ if(e.target.id==="shareModal")closeShare(); });
   $("shViewCopy").addEventListener("click",function(){ if($("shViewUrl").value)copyText($("shViewUrl").value,this); });
   $("shEditCopy").addEventListener("click",function(){ if($("shEditUrl").value)copyText($("shEditUrl").value,this); });
-  $("shPrivate").addEventListener("change",function(){ var on=this.checked; var self=this;
-    shareApi("setPrivate",{private:on}).then(function(j){ if(!j||j.private===undefined){ self.checked=!on; } }).catch(function(){ self.checked=!on; }); });
   $("shRotate").addEventListener("click",function(){ if(!window.confirm(T("shRotateConfirm")))return; $("shareMsg").textContent="…"; shareApi("rotate").then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); }); });
   document.addEventListener("click",function(){ closePops(); });
 

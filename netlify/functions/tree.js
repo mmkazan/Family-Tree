@@ -43,7 +43,7 @@ function publicDoc(doc, role) {
   return {
     title: doc.title, people: doc.people || {}, config: doc.config,
     version: doc.version || 0, updated: doc.updated || 0,
-    role, private: !!(s && s.private),
+    role, private: true,
   };
 }
 
@@ -56,8 +56,8 @@ export default async (req) => {
     const url = new URL(req.url);
     const token = url.searchParams.get("k") || req.headers.get("x-tree-token") || "";
     const role = roleFor(doc, token, false);
-    if (doc.share && doc.share.private && role === "none") {
-      return json({ error: "private" }, 401);
+    if (role === "none") {
+      return json({ error: "private" }, 401);   // trees are always private
     }
     return json(publicDoc(doc, role));
   }
@@ -80,12 +80,12 @@ export default async (req) => {
       if (!passcodeOk) return json({ error: "unauthorized" }, 401);
       let share = current.share || {};
       if (body.share === "rotate" || !share.viewToken || !share.editToken) {
-        share = { viewToken: tok(), editToken: tok(), private: !!share.private };
+        share = { viewToken: tok(), editToken: tok() };
       }
-      if (body.share === "setPrivate") share.private = !!body.private;
+      share.private = true;   // always private
       const next = { ...current, share, version: current.version || 0, updated: Date.now() };
       await store.setJSON(KEY, next);
-      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: !!share.private });
+      return json({ ok: true, viewToken: share.viewToken, editToken: share.editToken, private: true });
     }
 
     // ----- save a new version (passcode OR a valid edit token) -----
