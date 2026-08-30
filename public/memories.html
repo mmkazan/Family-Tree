@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Elaia — memories</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+  :root{color-scheme:light;--bg:#e9ebe4;--surface:#f8f8f3;--surface-2:#f1f2ea;--ink:#17262b;--muted:#5d6b6f;--faint:#8a9599;
+    --accent:#1e5c6e;--accent-deep:#17495a;--olive:#6f9b6e;--hair:#d7d8cd;--danger:#a5453a;--gold:#8a754a;
+    --shadow:0 1px 2px rgba(23,38,43,.08),0 6px 18px rgba(23,38,43,.09);--radius:11px}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+  .wrap{max-width:640px;margin:0 auto;padding:44px 22px 80px}
+  .serif{font-family:"GFS Didot",Georgia,serif;font-weight:400}
+  header.top{text-align:center;margin-bottom:26px}
+  .name{font-family:"GFS Didot",Georgia,serif;font-size:2.1rem;letter-spacing:.5px}
+  .tagline{color:var(--muted);margin:.4em 0 0;font-size:1rem}
+  .card{background:var(--surface);border:1px solid var(--hair);border-left:4px solid var(--olive);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 18px 16px;margin-bottom:16px}
+  .for{font-family:"GFS Didot",serif;font-size:1.2rem}
+  .meta{color:var(--muted);font-size:.86rem;margin-top:2px}
+  .txt{margin:12px 0 6px;font-size:1.02rem}
+  .med{margin:10px 0 4px}
+  .med audio,.med video,.med img{width:100%;max-width:420px;border-radius:8px;display:block;margin:8px 0}
+  .row{display:flex;gap:10px;margin-top:12px;align-items:center}
+  .btn{border:1px solid var(--accent);border-radius:8px;padding:8px 16px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer;background:var(--accent);color:#fff}
+  .btn:hover{background:var(--accent-deep)}
+  .btn.ghost{background:transparent;color:var(--muted);border-color:var(--hair)}
+  .btn.ghost:hover{border-color:var(--danger);color:var(--danger)}
+  .pill{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-left:auto}
+  .pill.ok{color:var(--olive)}
+  .empty{text-align:center;color:var(--muted);padding:30px 8px;border:1px dashed var(--faint);border-radius:10px}
+  .msg{min-height:1.2em;color:var(--muted);font-size:.9rem;text-align:center}
+  .foot{text-align:center;color:var(--faint);font-size:.8rem;margin-top:26px}
+  a{color:var(--accent-deep)}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--hair);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="name serif">Memories</div>
+    <p class="tagline">Voice notes, photos and messages the family sent in. Approve the ones to keep on the tree.</p>
+  </header>
+  <div id="view"><div class="msg"><span class="spin"></span> Loading…</div></div>
+  <p class="foot"><a href="/my">← back to your trees</a></p>
+</div>
+<script>
+(function(){
+  "use strict";
+  var view=document.getElementById("view");
+  function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function api(p,o){o=o||{};o.credentials="include";return fetch(p,o);}
+  function when(ts){ try{return new Date(ts).toLocaleDateString();}catch(e){return "";} }
+
+  api("/api/me").then(function(r){ if(r.status!==200){ location.href="/my"; return null; } return load(); });
+
+  function load(){
+    return api("/api/memories").then(function(r){return r.json();}).then(function(d){
+      var list=(d&&d.memories)||[];
+      if(!list.length){ view.innerHTML='<div class="empty">No memories yet. When family send a voice note, photo or message to the WhatsApp number, they’ll appear here to review.</div>'; return; }
+      view.innerHTML=list.map(card).join("");
+      view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b.getAttribute("data-tree"),b.getAttribute("data-mem"),b.getAttribute("data-act")); }); });
+    }).catch(function(){ view.innerHTML='<div class="empty">Couldn’t load — refresh to try again.</div>'; });
+  }
+
+  function media(m){
+    if(/^audio\//.test(m.type)) return '<audio controls preload="none" src="'+m.url+'"></audio>';
+    if(/^video\//.test(m.type)) return '<video controls preload="none" src="'+m.url+'"></video>';
+    if(/^image\//.test(m.type)) return '<img loading="lazy" src="'+m.url+'" alt="photo" />';
+    return '<a href="'+m.url+'">attachment</a>';
+  }
+  function card(m){
+    var pill = m.status==="approved" ? '<span class="pill ok">on the tree</span>' : '<span class="pill">to review</span>';
+    var meds=(m.media||[]).map(function(x){return '<div class="med">'+media(x)+'</div>';}).join("");
+    var actions = m.status==="approved" ? '' :
+      '<div class="row"><button class="btn" data-act="approve" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Keep on the tree</button>'+
+      '<button class="btn ghost" data-act="reject" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Hide</button></div>';
+    return '<div class="card"><div style="display:flex;align-items:baseline"><span class="for serif">For '+esc(m.personName)+'</span>'+pill+'</div>'+
+      '<div class="meta">from '+esc(m.from||"family")+' · '+when(m.ts)+'</div>'+
+      (m.text?'<div class="txt">“'+esc(m.text)+'”</div>':'')+meds+actions+'</div>';
+  }
+  function act(tree,mem,action){
+    api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tree:tree,mem:mem,action:action})})
+      .then(function(r){return r.json();}).then(function(){ load(); }).catch(function(){ alert("Couldn’t update — try again."); });
+  }
+})();
+</script>
+</body>
+</html>

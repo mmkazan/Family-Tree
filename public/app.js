@@ -152,12 +152,12 @@
     pt:{tag:"PT",en:"Portuguese",native:"Português"},
     pl:{tag:"PL",en:"Polish",native:"Polski"},
     tr:{tag:"TR",en:"Turkish",native:"Türkçe"},
-    ru:{tag:"RU",en:"Russian",native:"Русский"},
-    uk:{tag:"UK",en:"Ukrainian",native:"Українська"},
-    ar:{tag:"ع",en:"Arabic",native:"العربية",rtl:true},
-    he:{tag:"עב",en:"Hebrew",native:"עברית",rtl:true},
+    ru:{tag:"RU",en:"Russian",native:"Русский",translit:true},
+    uk:{tag:"UK",en:"Ukrainian",native:"Українська",translit:true},
+    ar:{tag:"ع",en:"Arabic",native:"العربية",rtl:true,translit:true},
+    he:{tag:"עב",en:"Hebrew",native:"עברית",rtl:true,translit:true},
     zh:{tag:"中",en:"Chinese",native:"中文"},
-    hi:{tag:"हि",en:"Hindi",native:"हिन्दी"}
+    hi:{tag:"हि",en:"Hindi",native:"हिन्दी",translit:true}
   };
 
   /* ================= State ================= */
@@ -178,7 +178,6 @@
   })();
   // per-link language — a share link can pin the language it opens in (…#k=…&lang=el)
   (function(){ var lm=(location.hash||"").match(/[#&]lang=(el|en)\b/) || (location.search||"").match(/[?&]lang=(el|en)\b/); if(lm&&lm[1]) lang=lm[1]; })();
-  var shareLang="en", lastShareTokens=null;
   function stripTokenFromUrl(){ if(!tokenFromUrl)return; tokenFromUrl=false;
     // NB: window.history — a local `var history` (undo/redo stack) shadows it in this closure
     try{ window.history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
@@ -194,7 +193,7 @@
   function cfg(){ if(!state.config)state.config={secondLang:"el",mono:false}; if(!LANGS[state.config.secondLang])state.config.secondLang="el"; return state.config; }
   function secondLangInfo(){ return LANGS[cfg().secondLang]||LANGS.el; }
   function isMono(){ return !!cfg().mono; }
-  function hasTranslit(){ return !isMono() && !!secondLangInfo().translit; }
+  function hasTranslit(){ return canToLatin() || canToNative(); }
   function secondNameLabel(){ var sl=secondLangInfo(); if(sl.translit&&cfg().secondLang==="el") return T("nameEl"); return "Name ("+sl.native+" · "+sl.en+")"; }
   // UI chrome is Greek only for a Greek-second-language tree; other second languages keep an English UI.
   function T(k){ var ui=(lang==="el"&&cfg().secondLang==="el")?"el":"en"; return STR[ui][k]; }
@@ -330,6 +329,31 @@
     if(/ας$/.test(word)) return word.replace(/ας$/,"α");
     return word;
   }
+
+  /* ---- transliteration for the other non-Latin scripts (native → Latin, best-guess) ---- */
+  // Single-character maps; a value may be several Latin letters (e.g. щ → shch).
+  var TR_RU={ "а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ё":"yo","ж":"zh","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ъ":"","ы":"y","ь":"","э":"e","ю":"yu","я":"ya" };
+  var TR_UK={ "а":"a","б":"b","в":"v","г":"h","ґ":"g","д":"d","е":"e","є":"ye","ж":"zh","з":"z","и":"y","і":"i","ї":"yi","й":"i","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ь":"","ю":"yu","я":"ya" };
+  var TR_HE={ "א":"","ב":"v","ג":"g","ד":"d","ה":"h","ו":"v","ז":"z","ח":"ch","ט":"t","י":"y","כ":"k","ך":"k","ל":"l","מ":"m","ם":"m","נ":"n","ן":"n","ס":"s","ע":"","פ":"f","ף":"f","צ":"ts","ץ":"ts","ק":"k","ר":"r","ש":"sh","ת":"t","ׁ":"","ּ":"" };
+  var TR_AR={ "ا":"a","أ":"a","إ":"i","آ":"a","ب":"b","ت":"t","ث":"th","ج":"j","ح":"h","خ":"kh","د":"d","ذ":"dh","ر":"r","ز":"z","س":"s","ش":"sh","ص":"s","ض":"d","ط":"t","ظ":"z","ع":"a","غ":"gh","ف":"f","ق":"q","ك":"k","ل":"l","م":"m","ن":"n","ه":"h","ة":"a","و":"w","ي":"y","ى":"a","ء":"","ـ":"","ً":"","ٌ":"","ٍ":"","َ":"a","ُ":"u","ِ":"i","ّ":"","ْ":"" };
+  var TR_HI={ "अ":"a","आ":"a","इ":"i","ई":"i","उ":"u","ऊ":"u","ऋ":"ri","ए":"e","ऐ":"ai","ओ":"o","औ":"au","क":"k","ख":"kh","ग":"g","घ":"gh","ङ":"n","च":"ch","छ":"chh","ज":"j","झ":"jh","ञ":"n","ट":"t","ठ":"th","ड":"d","ढ":"dh","ण":"n","त":"t","थ":"th","द":"d","ध":"dh","न":"n","प":"p","फ":"ph","ब":"b","भ":"bh","म":"m","य":"y","र":"r","ल":"l","व":"v","श":"sh","ष":"sh","स":"s","ह":"h","ा":"a","ि":"i","ी":"i","ु":"u","ू":"u","ृ":"ri","े":"e","ै":"ai","ो":"o","ौ":"au","ं":"n","ः":"h","ँ":"n","्":"" };
+  function fwdWord(w, table){ var out="", i=0; for(i=0;i<w.length;i++){ var ch=w[i].toLowerCase(); out += (table[ch]!==undefined?table[ch]:ch); } return cap(out); }
+  function fwdName(name, table){ if(!name)return ""; return name.trim().split(/\s+/).map(function(w){ return fwdWord(w, table); }).join(" "); }
+
+  // Per-language engine. el = full dictionary + maps (both ways); others = native→Latin only.
+  var TRANSLIT={
+    el:{ toNative:toGreekName, toLatin:toLatinName, fem:true },
+    ru:{ toLatin:function(w){ return fwdName(w, TR_RU); } },
+    uk:{ toLatin:function(w){ return fwdName(w, TR_UK); } },
+    he:{ toLatin:function(w){ return fwdName(w, TR_HE); } },
+    ar:{ toLatin:function(w){ return fwdName(w, TR_AR); } },
+    hi:{ toLatin:function(w){ return fwdName(w, TR_HI); } }
+  };
+  function tlEngine(){ return (!isMono() && TRANSLIT[cfg().secondLang]) || null; }
+  function canToLatin(){ var e=tlEngine(); return !!(e && e.toLatin); }
+  function canToNative(){ var e=tlEngine(); return !!(e && e.toNative); }
+  function nativeFromLatin(en){ var e=tlEngine(); return (e && e.toNative)?e.toNative(en):""; }
+  function latinFromNative(na){ var e=tlEngine(); return (e && e.toLatin)?e.toLatin(na):""; }
 
   /* ================= Layout ================= */
   var U=210, CH=106, COUPLE_GAP=28, SIB_GAP=42, GEN_GAP=62, PAD=40;
@@ -641,11 +665,11 @@
     var _sl=secondLangInfo();
     if(!isMono()){
       html+='<div class="field"><label class="lblrow" for="f_el">'+esc(secondNameLabel())+
-        (_sl.translit?'<button type="button" class="translit" data-to="el">'+TRANSLIT_ICON+esc(T("trFromEn"))+'</button>':'')+'</label>'+
-        '<input id="f_el" class="el" dir="auto" value="'+esc(p.nameEl||"")+'" placeholder="'+esc(_sl.translit?T("placeholderEl"):_sl.native)+'" /></div>';
+        (canToNative()?'<button type="button" class="translit" data-to="el">'+TRANSLIT_ICON+esc(T("trFromEn"))+'</button>':'')+'</label>'+
+        '<input id="f_el" class="el" dir="auto" value="'+esc(p.nameEl||"")+'" placeholder="'+esc(cfg().secondLang==="el"?T("placeholderEl"):_sl.native)+'" /></div>';
     }
     html+='<div class="field"><label class="lblrow" for="f_en">'+esc(T("nameEn"))+
-      (hasTranslit()?'<button type="button" class="translit" data-to="en">'+TRANSLIT_ICON+esc(T("trFromEl"))+'</button>':'')+'</label>'+
+      (canToLatin()?'<button type="button" class="translit" data-to="en">'+TRANSLIT_ICON+esc(cfg().secondLang==="el"?T("trFromEl"):("from "+_sl.en))+'</button>':'')+'</label>'+
       '<input id="f_en" value="'+esc(p.nameEn||"")+'" placeholder="'+esc(T("placeholderEn"))+'" /></div>';
     html+='<div class="two">'+fieldRow(T("nick"),"f_nick",p.nick,"","",false)+
       '<div class="field"><label for="f_sex">'+esc(T("sexLabel"))+'</label><select id="f_sex" class="sel">'+
@@ -688,9 +712,9 @@
     $("bpFind").addEventListener("click",function(){ doGeocode($("bpRow")); });
     drawerBody.querySelectorAll(".translit").forEach(function(b){ b.addEventListener("click",function(){
       var dir=b.getAttribute("data-to");
-      if(dir==="el"){ var en=$("f_en").value.trim(); if(en){ var g=toGreekName(en); var sx=$("f_sex")?$("f_sex").value:"";
-          if(sx==="f"){ var parts=g.split(" "); parts[parts.length-1]=feminizeGreek(parts[parts.length-1]); g=parts.join(" "); } $("f_el").value=g; } $("f_el").focus(); }
-      else { var el=$("f_el").value.trim(); if(el) $("f_en").value=toLatinName(el); $("f_en").focus(); }
+      if(dir==="el"){ var en=$("f_en").value.trim(); if(en){ var g=nativeFromLatin(en); var sx=$("f_sex")?$("f_sex").value:"";
+          if(cfg().secondLang==="el" && sx==="f"){ var parts=g.split(" "); parts[parts.length-1]=feminizeGreek(parts[parts.length-1]); g=parts.join(" "); } $("f_el").value=g; } $("f_el").focus(); }
+      else { var el=$("f_el").value.trim(); if(el) $("f_en").value=latinFromNative(el); $("f_en").focus(); }
     }); });
 
     drawerBody.querySelectorAll("[data-rel]").forEach(function(b){ b.addEventListener("click",function(){ try{ commitFields(); }catch(e){ if(window.console)console.error(e); }
@@ -1603,24 +1627,29 @@
 
   /* ================= Share: magic links (view / edit) ================= */
   function shareOrigin(){ return location.origin + location.pathname; }
-  function buildLink(token){ var u=shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; if(shareLang && !isMono()) u+="&lang="+shareLang; return u; }
-  function refillShareUrls(){ if(!lastShareTokens)return; $("shViewUrl").value=buildLink(lastShareTokens.viewToken); $("shEditUrl").value=buildLink(lastShareTokens.editToken); }
-  function setShareLang(l){ shareLang=(l==="el"?"el":"en"); var en=$("shLangEn"),el=$("shLangEl"); if(en)en.setAttribute("aria-pressed",shareLang==="en"); if(el)el.setAttribute("aria-pressed",shareLang==="el"); refillShareUrls(); }
+  function buildLink(token,l){ var u=shareOrigin() + (accountMode?("?id="+encodeURIComponent(treeId)):"") + "#k=" + token; if(l && !isMono()) u+="&lang="+l; return u; }
   function shareApi(action, extra){ var body={share:action}; if(!accountMode)body.passcode=passcode; if(extra)for(var k in extra)body[k]=extra[k];
     return fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
-  function fillShare(j){ if(!j)return; lastShareTokens=j; $("shViewUrl").value=buildLink(j.viewToken); $("shEditUrl").value=buildLink(j.editToken); if($("shProtect")&&typeof j.hideLiving==="boolean")$("shProtect").checked=j.hideLiving; $("shareMsg").textContent=""; }
+  function fillShare(j){ if(!j)return; var mono=isMono();
+    $("urlViewEn").value=buildLink(j.viewToken, mono?"":"en");
+    $("urlEditEn").value=buildLink(j.editToken, mono?"":"en");
+    if($("urlViewEl"))$("urlViewEl").value=buildLink(j.viewToken,"el");
+    if($("urlEditEl"))$("urlEditEl").value=buildLink(j.editToken,"el");
+    if($("shProtect")&&typeof j.hideLiving==="boolean")$("shProtect").checked=j.hideLiving;
+    $("shareMsg").textContent=""; }
   function openShare(){
     if(!passcode && !accountMode){ toast(T("shareNeedSave")); openPasscode(); return; }
     $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=T("shareLede");
-    $("shViewLbl").textContent=T("shViewLbl"); $("shEditLbl").textContent=T("shEditLbl");
-    $("shViewCopy").textContent=T("copy"); $("shEditCopy").textContent=T("copy");
     $("shRotate").textContent=T("shRotate"); $("shareDone").textContent=T("shareDone");
-    if($("shLangLbl"))$("shLangLbl").textContent=T("shLangLbl");
+    var mono=isMono(), enName="English", elName=secondLangInfo().native;
+    $("lblViewEn").textContent=T("shViewLbl")+(mono?"":" · "+enName);
+    $("lblEditEn").textContent=T("shEditLbl")+(mono?"":" · "+enName);
+    if($("lblViewEl"))$("lblViewEl").textContent=T("shViewLbl")+" · "+elName;
+    if($("lblEditEl"))$("lblEditEl").textContent=T("shEditLbl")+" · "+elName;
+    $("rowViewEl").style.display=mono?"none":""; $("rowEditEl").style.display=mono?"none":"";
     if($("shProtectLbl"))$("shProtectLbl").textContent=T("shProtect");
-    if($("shLangEl"))$("shLangEl").textContent=secondLangInfo().tag;
-    var _ls=$("shLangSeg"); if(_ls)_ls.style.display=isMono()?"none":"";
-    $("shViewUrl").value=""; $("shEditUrl").value=""; $("shareMsg").textContent="…";
-    lastShareTokens=null; setShareLang(lang);   // each link defaults to the owner's current language
+    Array.prototype.forEach.call(document.querySelectorAll("#shareModal [data-copy]"),function(b){ b.textContent=T("copy"); });
+    $("urlViewEn").value=""; $("urlEditEn").value=""; if($("urlViewEl"))$("urlViewEl").value=""; if($("urlEditEl"))$("urlEditEl").value=""; $("shareMsg").textContent="…";
     $("shareModal").classList.add("open");
     shareApi("get").then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); });
   }
@@ -1633,11 +1662,10 @@
   $("shareClose").addEventListener("click",closeShare);
   $("shareDone").addEventListener("click",closeShare);
   $("shareModal").addEventListener("click",function(e){ if(e.target.id==="shareModal")closeShare(); });
-  $("shViewCopy").addEventListener("click",function(){ if($("shViewUrl").value)copyText($("shViewUrl").value,this); });
-  $("shEditCopy").addEventListener("click",function(){ if($("shEditUrl").value)copyText($("shEditUrl").value,this); });
+  Array.prototype.forEach.call(document.querySelectorAll("#shareModal [data-copy]"),function(b){
+    b.addEventListener("click",function(){ var inp=$(b.getAttribute("data-copy")); if(inp&&inp.value)copyText(inp.value,b); });
+  });
   $("shRotate").addEventListener("click",function(){ if(!window.confirm(T("shRotateConfirm")))return; $("shareMsg").textContent="…"; shareApi("rotate").then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); }); });
-  if($("shLangEn"))$("shLangEn").addEventListener("click",function(){ setShareLang("en"); });
-  if($("shLangEl"))$("shLangEl").addEventListener("click",function(){ setShareLang("el"); });
   if($("shProtect"))$("shProtect").addEventListener("change",function(){ var v=this.checked; $("shareMsg").textContent="…"; shareApi("get",{hideLiving:v}).then(fillShare).catch(function(){ $("shareMsg").textContent=T("offline"); }); });
   document.addEventListener("click",function(){ closePops(); });
 

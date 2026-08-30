@@ -10,6 +10,11 @@ export const trees = () => getStore("trees");              // treeId -> tree doc
 export const shares = () => getStore("shares");            // shareToken -> { treeId, lang, hideLiving, revoked }
 export const snapshots = () => getStore("snapshots");      // `${treeId}/${iso}` -> tree doc
 
+// WhatsApp "leave a memory" pipeline (Twilio inbound):
+export const memories = () => getStore("memories");        // `${treeId}/${memId}` -> { id,treeId,personId,from,fromName,text,media:[{key,type}],ts,status }
+export const memoryMedia = () => getStore("memory-media"); // `${memId}/${i}` -> raw bytes (contentType in metadata)
+export const waContext = () => getStore("wa-context");     // fromNumber -> { treeId, personId, ts } (recent "who is this memory for")
+
 export function normEmail(e) {
   return String(e || "").trim().toLowerCase();
 }
