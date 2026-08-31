@@ -920,12 +920,15 @@
     if(/^image\//.test(t)) return '<img class="m-img" src="'+u+'" alt="memory" loading="lazy" data-full="'+u+'"/>';
     return '<a class="p-mediabtn" href="'+u+'" target="_blank" rel="noopener noreferrer"><span class="ml">Attachment</span><span class="go">↗</span></a>';
   }
+  // Bump this whenever the voice wording/behaviour changes, so the browser (which caches each
+  // audio URL for days) is forced to fetch fresh audio instead of replaying the old take.
+  var VOICE_V="3";
   // URL to read a memory's translation aloud in language k (account mode; carries the viewer's token).
-  function ttsUrl(memId,k){ if(!accountMode||!treeId||!memId) return ""; var u="/api/tts?tree="+encodeURIComponent(treeId)+"&mem="+encodeURIComponent(memId)+"&lang="+encodeURIComponent(k); if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
+  function ttsUrl(memId,k){ if(!accountMode||!treeId||!memId) return ""; var u="/api/tts?tree="+encodeURIComponent(treeId)+"&mem="+encodeURIComponent(memId)+"&lang="+encodeURIComponent(k)+"&v="+VOICE_V; if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
   // "Say the name" — a 🔊 that pronounces a name aloud (Gemini TTS via /api/say),
   // in a voice matching the person's gender.
   function sayNameBtn(text,langCode,sex){ if(!accountMode||!treeId||!text) return "";
-    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(langCode||"")+"&sex="+encodeURIComponent(sex||""); if(shareToken)u+="&k="+encodeURIComponent(shareToken);
+    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(langCode||"")+"&sex="+encodeURIComponent(sex||"")+"&v="+VOICE_V; if(shareToken)u+="&k="+encodeURIComponent(shareToken);
     return ' <button type="button" class="name-say" data-url="'+esc(u)+'" title="Hear this name" aria-label="Hear this name" onclick="window.__say&&window.__say(this)">'+SPEAK_SVG+'</button>'; }
   // Editor version: reads the CURRENT value of a name input (+ the sex dropdown) at click time.
   window.__sayInput=function(btn){ try{
@@ -933,7 +936,7 @@
     var text=(inp.value||"").trim(); if(!text || !accountMode || !treeId) return;
     var lang=btn.getAttribute("data-lang")||"";
     var sx=(document.getElementById("f_sex")&&document.getElementById("f_sex").value)||"";
-    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(lang)+"&sex="+encodeURIComponent(sx);
+    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(lang)+"&sex="+encodeURIComponent(sx)+"&v="+VOICE_V;
     if(shareToken)u+="&k="+encodeURIComponent(shareToken);
     btn.setAttribute("data-url",u); if(window.__say)window.__say(btn);
   }catch(e){} };

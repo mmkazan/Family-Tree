@@ -169,7 +169,7 @@
     clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity="0"; },2800);
   }
   function playTts(b){
-    var url="/api/tts?tree="+encodeURIComponent(b.getAttribute("data-tree"))+"&mem="+encodeURIComponent(b.getAttribute("data-mem"))+"&lang="+encodeURIComponent(b.getAttribute("data-lang"));
+    var url="/api/tts?tree="+encodeURIComponent(b.getAttribute("data-tree"))+"&mem="+encodeURIComponent(b.getAttribute("data-mem"))+"&lang="+encodeURIComponent(b.getAttribute("data-lang"))+"&v=3";
     if(_ttsAudio){ try{_ttsAudio.pause();}catch(e){} }
     if(_ttsObjUrl){ try{ URL.revokeObjectURL(_ttsObjUrl); }catch(e){} _ttsObjUrl=null; }
     b.classList.add("saying");
