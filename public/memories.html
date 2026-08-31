@@ -159,10 +159,31 @@
         else if(note){ note.textContent="couldn’t save"; note.className="fromsaved bad"; }
       }).catch(function(){ if(note){ note.textContent="couldn’t save"; note.className="fromsaved bad"; } });
   }
+  var _ttsObjUrl=null;
+  function mToast(msg){
+    var t=document.getElementById("mToast");
+    if(!t){ t=document.createElement("div"); t.id="mToast";
+      t.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:9999;opacity:0;transition:opacity .2s;max-width:88vw;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.25)";
+      document.body.appendChild(t); }
+    t.textContent=msg; t.style.opacity="1";
+    clearTimeout(t._h); t._h=setTimeout(function(){ t.style.opacity="0"; },2800);
+  }
   function playTts(b){
     var url="/api/tts?tree="+encodeURIComponent(b.getAttribute("data-tree"))+"&mem="+encodeURIComponent(b.getAttribute("data-mem"))+"&lang="+encodeURIComponent(b.getAttribute("data-lang"));
-    if(_ttsAudio){ try{_ttsAudio.pause();}catch(e){} } _ttsAudio=new Audio(url); b.classList.add("saying");
-    var done=function(){ b.classList.remove("saying"); }; _ttsAudio.onended=done; _ttsAudio.onerror=done; _ttsAudio.play().catch(done);
+    if(_ttsAudio){ try{_ttsAudio.pause();}catch(e){} }
+    if(_ttsObjUrl){ try{ URL.revokeObjectURL(_ttsObjUrl); }catch(e){} _ttsObjUrl=null; }
+    b.classList.add("saying");
+    var busy=function(){ b.classList.remove("saying"); mToast("Read-aloud is busy right now — please try again in a minute."); };
+    var done=function(){ b.classList.remove("saying"); };
+    // Fetch first so a real "voice is busy" (quota / 503) is told apart from a normal end.
+    fetch(url,{credentials:"same-origin"}).then(function(r){
+      if(!r.ok){ busy(); return null; }
+      return r.blob();
+    }).then(function(bl){
+      if(!bl) return;
+      var o=URL.createObjectURL(bl); _ttsObjUrl=o;
+      _ttsAudio=new Audio(o); _ttsAudio.onended=done; _ttsAudio.onerror=done; _ttsAudio.play().catch(done);
+    }).catch(busy);
   }
   function card(m){
     var pill = m.status==="approved" ? '<span class="pill ok">on the tree</span>' : '<span class="pill">to review</span>';

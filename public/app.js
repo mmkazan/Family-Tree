@@ -876,9 +876,20 @@
   window.__say=function(btn){ try{
     var url=btn.getAttribute("data-url"); if(!url) return;
     if(window.__sayAudio){ try{ window.__sayAudio.pause(); }catch(e){} if(window.__sayBtn) window.__sayBtn.classList.remove("saying"); }
-    var a=new Audio(url); window.__sayAudio=a; window.__sayBtn=btn; btn.classList.add("saying");
+    if(window.__sayObjUrl){ try{ URL.revokeObjectURL(window.__sayObjUrl); }catch(e){} window.__sayObjUrl=null; }
+    window.__sayBtn=btn; btn.classList.add("saying");
+    var busy=function(){ btn.classList.remove("saying"); try{ if(typeof toast==="function") toast("Read-aloud is busy right now — please try again in a minute."); }catch(e){} };
     var done=function(){ btn.classList.remove("saying"); };
-    a.onended=done; a.onerror=done; a.play().catch(done);
+    // Fetch first so a real "voice is busy" (quota / 503) is told apart from a normal end.
+    fetch(url,{credentials:"same-origin"}).then(function(r){
+      if(!r.ok){ busy(); return null; }
+      return r.blob();
+    }).then(function(b){
+      if(!b) return;
+      var o=URL.createObjectURL(b); window.__sayObjUrl=o;
+      var a=new Audio(o); window.__sayAudio=a;
+      a.onended=done; a.onerror=done; a.play().catch(done);
+    }).catch(busy);
   }catch(e){} };
   function loadMemories(){
     if(!accountMode || !treeId) return;   // memories are per-account-tree only
