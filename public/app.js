@@ -38,7 +38,8 @@
       nick:"Also known as", sexLabel:"Sex", sexU:"—", sexM:"Male", sexF:"Female", source:"Source (where this info came from)",
       tBaptism:"Baptism", tMilitary:"Military", tImmigration:"Immigration", tMarried:"Marriage", tBurial:"Burial",
       searchPh:"Search people…", noResults:"No matches",
-      dataMenu:"Backup & export", backupJson:"Download backup (.json)", exportGed:"Export GEDCOM (.ged)", restoreJson:"Restore from backup…",
+      dataMenu:"Backup & export", backupFull:"Download everything (photos & voice notes)", backupJson:"Download backup (.json)", exportGed:"Export GEDCOM (.ged)", restoreJson:"Restore from backup…",
+      exPrep:"Preparing your archive…", exGather:"Gathering your photos & voice notes", exZip:"Packaging your archive…", exDone:"Downloaded your full archive — photos, voice notes and all.", exFail:"Couldn't build the archive — please try again.", exSome:"Archive downloaded. A few files couldn't be included — see README.txt inside.",
       restoreConfirm:"Replace the whole tree with this backup? Your current tree will be overwritten.", restoreBad:"That file doesn't look like a valid backup.", restored:"Backup restored.",
       dataLang:"Language & display…", dataShare:"Share…", shareBtn:"Share",
       setTitle:"Language & display", setLede:"Choose how names appear across the tree.",
@@ -105,7 +106,8 @@
       nick:"Επίσης γνωστός/ή ως", sexLabel:"Φύλο", sexU:"—", sexM:"Άνδρας", sexF:"Γυναίκα", source:"Πηγή (από πού προέρχεται)",
       tBaptism:"Βάπτιση", tMilitary:"Στρατός", tImmigration:"Μετανάστευση", tMarried:"Γάμος", tBurial:"Ταφή",
       searchPh:"Αναζήτηση ατόμων…", noResults:"Καμία αντιστοιχία",
-      dataMenu:"Αντίγραφο & εξαγωγή", backupJson:"Λήψη αντιγράφου (.json)", exportGed:"Εξαγωγή GEDCOM (.ged)", restoreJson:"Επαναφορά από αντίγραφο…",
+      dataMenu:"Αντίγραφο & εξαγωγή", backupFull:"Λήψη των πάντων (φωτογραφίες & μηνύματα)", backupJson:"Λήψη αντιγράφου (.json)", exportGed:"Εξαγωγή GEDCOM (.ged)", restoreJson:"Επαναφορά από αντίγραφο…",
+      exPrep:"Ετοιμάζεται το αρχείο σας…", exGather:"Συλλογή φωτογραφιών & μηνυμάτων", exZip:"Δημιουργία αρχείου…", exDone:"Λήφθηκε το πλήρες αρχείο σας — φωτογραφίες, μηνύματα και όλα.", exFail:"Δεν ήταν δυνατή η δημιουργία — δοκιμάστε ξανά.", exSome:"Το αρχείο λήφθηκε. Μερικά αρχεία δεν συμπεριλήφθηκαν — δείτε το README.txt.",
       restoreConfirm:"Αντικατάσταση όλου του δέντρου με αυτό το αρχείο; Το τρέχον δέντρο θα χαθεί.", restoreBad:"Το αρχείο δεν φαίνεται έγκυρο αντίγραφο.", restored:"Έγινε επαναφορά.",
       dataLang:"Γλώσσα & εμφάνιση…", dataShare:"Κοινή χρήση…", shareBtn:"Κοινή χρήση",
       setTitle:"Γλώσσα & εμφάνιση", setLede:"Επιλέξτε πώς εμφανίζονται τα ονόματα στο δέντρο.",
@@ -520,6 +522,7 @@
     if($("shareLbl2"))$("shareLbl2").textContent=T("shareBtn");
     if($("openShare"))$("openShare").setAttribute("title",T("shareTitle"));
     if($("openSettings")){ $("openSettings").setAttribute("aria-label",T("setTitle")); $("openSettings").setAttribute("title",T("setTitle")); }
+    if($("dlFull"))$("dlFull").textContent=T("backupFull");
     if($("dlBackup"))$("dlBackup").textContent=T("backupJson");
     if($("dlGedcom"))$("dlGedcom").textContent=T("exportGed");
     if($("doRestore"))$("doRestore").textContent=T("restoreJson");
@@ -891,6 +894,20 @@
       a.onended=done; a.onerror=done; a.play().catch(done);
     }).catch(busy);
   }catch(e){} };
+  // Pre-warm: when a card opens, quietly synth+cache its name audio in the background so the
+  // first real click on the 🔊 plays instantly (the couple-second wait is the one-time synth,
+  // paid silently here and then cached for the whole family). Fire-and-forget; deduped per URL.
+  window.__sayWarmed = window.__sayWarmed || {};
+  function prewarmSpeak(root){
+    try{
+      (root||document).querySelectorAll(".name-say[data-url], .mem-say[data-url]").forEach(function(btn){
+        var u=btn.getAttribute("data-url"); if(!u || window.__sayWarmed[u]) return;
+        window.__sayWarmed[u]=1;
+        try{ fetch(u,{credentials:"same-origin"}).then(function(r){ if(!r.ok) delete window.__sayWarmed[u]; }).catch(function(){ delete window.__sayWarmed[u]; }); }
+        catch(e){ delete window.__sayWarmed[u]; }
+      });
+    }catch(e){}
+  }
   function loadMemories(){
     if(!accountMode || !treeId) return;   // memories are per-account-tree only
     // Owner (session) uses the review endpoint; a family member on a share link uses
@@ -982,7 +999,8 @@
     var tag="[mem:"+treeId+":"+pid+"]";
     var href="https://wa.me/"+num+"?text="+encodeURIComponent(tag);
     return '<a class="mem-leave" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+
-      '<span class="ic">'+HEART_SVG+'</span><span class="tx"><span class="t1">'+esc(T("leaveMemory"))+'</span>'+
+      '<span class="ic">'+HEART_SVG+'</span><span class="tx"><span class="t1">'+esc(T("leaveMemory"))+
+      (lang!=="el"?'<span class="mem-el" title="Greek for a cherished memory (say “mnee-mee”)">mními</span>':'')+'</span>'+
       '<span class="t2">'+esc(T("leaveMemoryHint"))+'</span></span><span class="wa">WhatsApp ↗</span></a>';
   }
 
@@ -1021,6 +1039,7 @@
     h+='</div>';
     drawerBody.innerHTML=h; drawerBody.scrollTop=0;
     var _pph=personPhoto(p); if(_pph){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+_pph+'")'; }
+    prewarmSpeak(drawerBody);   // synth the names in the background so the first 🔊 click is instant
     drawer.classList.add("open"); scrim.classList.add("open"); drawer.setAttribute("aria-hidden","false"); render();
   }
   function openPerson(pid){ if(moveArmedId){ moveArmedId=null; setMoveHint(false); } if(editMode) openEditor(pid,false); else openProfile(pid); }
@@ -1779,6 +1798,155 @@
   function backupJSON(){ var data={title:state.title,version:state.version,people:state.people,exported:new Date().toISOString(),format:"kazantzis-tree-backup-1"};
     download("kazantzis-tree-"+stamp()+".json", JSON.stringify(data,null,2), "application/json"); }
   function doExportGEDCOM(){ download("kazantzis-tree-"+stamp()+".ged", buildGEDCOM(), "text/plain;charset=utf-8"); }
+
+  /* ===== Full archive export: tree + memories + ALL media, zipped in the browser =====
+     Everything the family owns, in one file that opens offline — so their memories are
+     never hostage to Elaia existing. The ZIP is assembled client-side (a tiny store-only
+     writer, no library) and each media file is fetched through the endpoints the viewer is
+     already authorised for, sidestepping Netlify's response-size cap. */
+  var _crcTab;
+  function crcTab(){ if(_crcTab)return _crcTab; var t=new Uint32Array(256); for(var n=0;n<256;n++){ var c=n; for(var k=0;k<8;k++){ c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); } t[n]=c>>>0; } return (_crcTab=t); }
+  function crc32(b){ var t=crcTab(), c=0xFFFFFFFF; for(var i=0;i<b.length;i++){ c=t[(c^b[i])&0xFF]^(c>>>8); } return (c^0xFFFFFFFF)>>>0; }
+  function sBytes(s){ return new TextEncoder().encode(String(s)); }
+  function u16(v){ return new Uint8Array([v&255,(v>>>8)&255]); }
+  function u32(v){ v>>>=0; return new Uint8Array([v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255]); }
+  function makeZip(files){   // files:[{name,data:Uint8Array}] -> Blob (store method, UTF-8 names)
+    var chunks=[], central=[], offset=0, d=new Date();
+    var dt=((d.getHours()&31)<<11)|((d.getMinutes()&63)<<5)|((d.getSeconds()>>1)&31);
+    var dd=(((d.getFullYear()-1980)&127)<<9)|(((d.getMonth()+1)&15)<<5)|(d.getDate()&31);
+    files.forEach(function(f){
+      var name=sBytes(f.name), data=f.data||new Uint8Array(0), crc=crc32(data), off=offset;
+      var lh=[u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(dt),u16(dd),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name];
+      lh.forEach(function(x){ chunks.push(x); offset+=x.length; }); chunks.push(data); offset+=data.length;
+      central.push([u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(dt),u16(dd),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(off),name]);
+    });
+    var cdStart=offset, cd=[]; central.forEach(function(row){ row.forEach(function(x){ cd.push(x); offset+=x.length; }); });
+    var eocd=[u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(offset-cdStart),u32(cdStart),u16(0)];
+    return new Blob(chunks.concat(cd).concat(eocd),{type:"application/zip"});
+  }
+  function mimeExt(ct){ ct=String(ct||"").toLowerCase().split(";")[0].trim();
+    var m={"image/jpeg":"jpg","image/jpg":"jpg","image/png":"png","image/gif":"gif","image/webp":"webp","image/heic":"heic","image/heif":"heif",
+      "audio/ogg":"ogg","audio/opus":"opus","audio/mpeg":"mp3","audio/mp4":"m4a","audio/aac":"aac","audio/wav":"wav","audio/x-wav":"wav","audio/amr":"amr","audio/3gpp":"3gp",
+      "video/mp4":"mp4","video/quicktime":"mov","video/webm":"webm","video/3gpp":"3gp","application/pdf":"pdf"};
+    return m[ct] || ((ct.split("/")[1]||"bin").replace(/[^a-z0-9]/g,"")||"bin"); }
+  function safeName(s){ return String(s||"x").replace(/[^A-Za-z0-9_-]+/g,"_").slice(0,60); }
+  function slugTitle(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
+  function withTok(u){ if(shareToken && !/[?&]k=/.test(u)) u+=(u.indexOf("?")<0?"?":"&")+"k="+encodeURIComponent(shareToken); return u; }
+  function dataUrlBytes(u){ try{ var m=/^data:([^;,]+)?(;base64)?,([\s\S]*)$/i.exec(u); if(!m)return null; var ct=m[1]||"application/octet-stream", raw=m[3]||"", by;
+    if(m[2]){ var bin=atob(raw); by=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++)by[i]=bin.charCodeAt(i); } else by=sBytes(decodeURIComponent(raw));
+    return {bytes:by,type:ct}; }catch(e){ return null; } }
+  function fetchBytes(url){ return fetch(url,{credentials:"same-origin",cache:"no-store"}).then(function(r){ if(!r.ok)return null; var ct=r.headers.get("content-type")||"";
+    return r.arrayBuffer().then(function(ab){ return {bytes:new Uint8Array(ab),type:ct}; }); }).catch(function(){ return null; }); }
+  function exBar(txt){ var b=$("exportBar"); if(!b)return; $("exportBarTxt").textContent=txt; b.classList.add("show"); }
+  function exBarHide(){ var b=$("exportBar"); if(b)b.classList.remove("show"); }
+  function escH(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  function personDisplay(p){ if(!p)return "Unknown"; return p.nameEn||p.nameEl||"Unnamed"; }
+
+  function buildMemoriesDoc(mems){
+    // Readable, offline HTML of every memory, grouped by person, linking the local media files.
+    var byPerson={};
+    mems.forEach(function(m){ (byPerson[m.personId]=byPerson[m.personId]||[]).push(m); });
+    var secs=Object.keys(byPerson).map(function(pid){
+      var pname=escH((mems.find(function(m){return m.personId===pid;})||{}).personName || personDisplay((state.people||{})[pid]));
+      var items=byPerson[pid].slice().sort(function(a,b){return b.ts-a.ts;}).map(function(m){
+        var when=""; try{ when=new Date(m.ts).toLocaleString(); }catch(e){}
+        var from=escH(m.from||m.fromName||"Family");
+        var media=(m.__files||[]).map(function(f){
+          if(/^audio\//.test(f.type)) return '<audio controls preload="none" src="'+escH(f.name)+'"></audio>';
+          if(/^video\//.test(f.type)) return '<video controls preload="metadata" src="'+escH(f.name)+'"></video>';
+          if(/^image\//.test(f.type)) return '<a href="'+escH(f.name)+'"><img src="'+escH(f.name)+'" alt="memory"></a>';
+          return '<a href="'+escH(f.name)+'">'+escH(f.name.split("/").pop())+'</a>';
+        }).join("");
+        var links=(m.mediaLinks||[]).map(function(u){ return '<div class="lnk">↗ <a href="'+escH(u)+'">'+escH(u)+'</a></div>'; }).join("");
+        var tr=""; if(m.tr&&m.tr.texts){ tr=Object.keys(m.tr.texts).map(function(l){ return m.tr.texts[l]?('<p class="tr"><span class="lg">'+escH(l.toUpperCase())+'</span> '+escH(m.tr.texts[l])+'</p>'):""; }).join(""); }
+        var txt=m.text?('<p class="raw">“'+escH(m.text)+'”</p>'):"";
+        return '<div class="mem"><div class="meta">'+from+' · '+escH(when)+(m.status&&m.status!=="approved"?' · <em>to review</em>':'')+'</div>'+txt+tr+(media?'<div class="med">'+media+'</div>':'')+links+'</div>';
+      }).join("");
+      return '<section><h2>'+pname+'</h2>'+items+'</section>';
+    }).join("");
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escH(state.title||"Family")+' — memories</title>'+
+      '<style>body{font-family:Georgia,serif;max-width:760px;margin:0 auto;padding:28px 18px 80px;color:#17262b;line-height:1.6}h1{font-size:1.9rem}h2{margin:34px 0 10px;border-bottom:1px solid #d7d8cd;padding-bottom:5px}'+
+      '.mem{border-left:3px solid #6f9b6e;padding:8px 0 8px 14px;margin:14px 0}.meta{color:#5d6b6f;font-size:.85rem}.raw{font-style:italic}.tr{margin:6px 0}.tr .lg{font-size:.7rem;font-weight:bold;color:#6f9b6e}'+
+      'audio,video,img{max-width:100%;display:block;margin:8px 0;border-radius:8px}.lnk{font-size:.85rem}a{color:#17495a}</style></head><body>'+
+      '<h1>'+escH(state.title||"Family")+' — memories</h1><p>Every voice note, photo and message on the tree. This page and its files open offline — they are yours to keep.</p>'+
+      (secs||'<p>No memories yet.</p>')+'</body></html>';
+  }
+  function buildIndexDoc(mems, fails){
+    var ppl=Object.keys(state.people||{}).length;
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escH(state.title||"Family")+' — your archive</title>'+
+      '<style>body{font-family:Georgia,serif;max-width:640px;margin:0 auto;padding:44px 20px;color:#17262b;line-height:1.6}h1{font-size:2.1rem}a{color:#17495a}.card{border:1px solid #d7d8cd;border-radius:11px;padding:16px 18px;margin:14px 0}small{color:#5d6b6f}</style></head><body>'+
+      '<h1>'+escH(state.title||"Family")+'</h1><p>This is your complete family archive — a copy you own. It opens without the internet and without any account.</p>'+
+      '<div class="card"><a href="memories.html"><b>📖 Read the memories</b></a><br><small>'+mems.length+' memories with their photos, voice notes and translations.</small></div>'+
+      '<div class="card"><b>👪 The tree</b><br><small>'+ppl+' people. <a href="tree.json">tree.json</a> (full data) · <a href="family-tree.ged">family-tree.ged</a> (import into any genealogy app).</small></div>'+
+      '<div class="card"><b>🖼️ Files</b><br><small>All photos and voice notes are in the <code>media/</code> folder.</small></div>'+
+      (fails&&fails.length?('<div class="card"><small>Note: '+fails.length+' file(s) could not be included in this download — see README.txt.</small></div>'):'')+
+      '<p><small>Exported '+escH(new Date().toLocaleString())+' from Elaia.</small></p></body></html>';
+  }
+  function buildReadme(fails){
+    var lines=["Your family archive — exported from Elaia","",
+      "WHAT'S HERE",
+      "  index.html         Open this first (works offline, no account needed).",
+      "  memories.html      Every memory, grouped by person, with media + translations.",
+      "  tree.json          The full family tree data.",
+      "  family-tree.ged    GEDCOM — import into Ancestry, MyHeritage, or any tree app.",
+      "  memories.json      All memories as data (transcripts, translations, senders, dates).",
+      "  media/people/      Everyone's photos.",
+      "  media/memories/    Every voice note, video and photo that was sent in.","",
+      "These files are yours to keep. Nothing here needs Elaia to exist.",
+      "Tip: keep a copy somewhere safe (a second drive, or your own cloud).",""];
+    if(fails&&fails.length){ lines.push("COULD NOT BE INCLUDED ("+fails.length+"):"); fails.forEach(function(u){ lines.push("  "+u); }); lines.push(""); lines.push("Try the export again while signed in to re-fetch these."); }
+    lines.push("","External photo/video LINKS on a card (e.g. Google Photos, YouTube) are references,");
+    lines.push("not copies — open them from tree.json / memories while you still can, and save them.");
+    return lines.join("\n");
+  }
+
+  async function exportEverything(){
+    if(!accountMode || !treeId){ toast(T("exFail")); return; }
+    exBar(T("exPrep"));
+    try{
+      var files=[], fails=[], photoFile={}, memFiles={};
+      // 1) memories (owner session -> all; token -> approved public)
+      var memUrl = shareToken ? ("/api/memories-public?id="+encodeURIComponent(treeId)+"&k="+encodeURIComponent(shareToken)) : "/api/memories";
+      var mems=[];
+      try{ var mr=await fetch(memUrl,{credentials:"include",cache:"no-store"}); if(mr.ok){ var md=await mr.json(); mems=((md&&md.memories)||[]).filter(function(m){ return m.tree===treeId; }); } }catch(e){}
+      // 2) build the media job list
+      var jobs=[];
+      Object.keys(state.people||{}).forEach(function(pid){ var p=state.people[pid];
+        if(p.photo && /^data:/i.test(p.photo)){ var dd=dataUrlBytes(p.photo); if(dd){ var fn="media/people/"+safeName(pid)+"."+mimeExt(dd.type); files.push({name:fn,data:dd.bytes}); photoFile[pid]=fn; } }
+        else if(p.photoKey){ jobs.push({kind:"photo",pid:pid,url:withTok("/api/tree-media?tree="+encodeURIComponent(treeId)+"&key="+encodeURIComponent(p.photoKey))}); }
+      });
+      mems.forEach(function(m){ (m.media||[]).forEach(function(mm,i){ if(mm&&mm.url) jobs.push({kind:"mem",mem:m,i:i,type:mm.type,url:withTok(mm.url)}); }); });
+      // 3) fetch media sequentially with progress (robust: keep going on failures)
+      for(var j=0;j<jobs.length;j++){
+        exBar(T("exGather")+" — "+(j+1)+"/"+jobs.length);
+        var job=jobs[j], res=await fetchBytes(job.url);
+        if(res){ var ext=mimeExt(res.type||job.type);
+          if(job.kind==="photo"){ var fn="media/people/"+safeName(job.pid)+"."+ext; files.push({name:fn,data:res.bytes}); photoFile[job.pid]=fn; }
+          else { var f2="media/memories/"+safeName(job.mem.id)+"-"+job.i+"."+ext; files.push({name:f2,data:res.bytes});
+            (memFiles[job.mem.id]=memFiles[job.mem.id]||[]).push({name:f2,type:res.type||job.type||"",i:job.i}); }
+        } else fails.push(job.url);
+      }
+      // 4) attach resolved file refs onto the memory objects for the readable HTML/json
+      mems.forEach(function(m){ m.__files=memFiles[m.id]||[]; m.mediaLinks=(m.media||[]).filter(function(x){return x&&x.url&&/^https?:/i.test(x.url);}).map(function(x){return x.url;}); });
+      // 5) clean tree.json (reference exported photo files, drop huge inline data URLs)
+      var people={}; Object.keys(state.people||{}).forEach(function(pid){ var p=state.people[pid], q={}; for(var k in p){ if(k==="photo"||k==="photoKey"||k.charAt(0)==="_") continue; q[k]=p[k]; } if(photoFile[pid])q.photoFile=photoFile[pid]; people[pid]=q; });
+      var treeData={ app:"Elaia", format:"elaia-tree-full-1", title:state.title, version:state.version, config:state.config, exported:new Date().toISOString(), people:people };
+      var memJson=mems.map(function(m){ return { id:m.id, personId:m.personId, person:m.personName, from:m.from||m.fromName||"", text:m.text||"", tr:m.tr||null, status:m.status, ts:m.ts, mediaFiles:(m.__files||[]).map(function(f){return f.name;}), mediaLinks:m.mediaLinks||[] }; });
+      // 6) documents
+      exBar(T("exZip"));
+      files.push({name:"tree.json",data:sBytes(JSON.stringify(treeData,null,2))});
+      files.push({name:"family-tree.ged",data:sBytes(buildGEDCOM())});
+      files.push({name:"memories.json",data:sBytes(JSON.stringify(memJson,null,2))});
+      files.push({name:"memories.html",data:sBytes(buildMemoriesDoc(mems))});
+      files.push({name:"index.html",data:sBytes(buildIndexDoc(mems,fails))});
+      files.push({name:"README.txt",data:sBytes(buildReadme(fails))});
+      // 7) zip + download
+      var blob=makeZip(files);
+      tapDownloadBlob((slugTitle(state.title)||"family")+"-elaia-"+stamp()+".zip", blob);
+      exBarHide();
+      toast(fails.length?T("exSome"):T("exDone"));
+    }catch(err){ exBarHide(); if(window.console)console.error(err); toast(T("exFail")); }
+  }
   function doRestoreClick(){ $("restoreFile").click(); }
   $("restoreFile").addEventListener("change",function(){ var f=this.files&&this.files[0]; if(!f)return; var self=this;
     var rd=new FileReader();
@@ -1795,6 +1963,7 @@
   });
   $("dataBtn").addEventListener("click",function(e){ e.stopPropagation(); var open=$("dataMenu").classList.contains("open"); closePops(); if(!open)$("dataMenu").classList.add("open"); });
   $("dataMenu").addEventListener("click",function(e){ e.stopPropagation(); });
+  if($("dlFull"))$("dlFull").addEventListener("click",function(){ closePops(); exportEverything(); });
   $("dlBackup").addEventListener("click",function(){ closePops(); backupJSON(); });
   $("dlGedcom").addEventListener("click",function(){ closePops(); doExportGEDCOM(); });
   $("doRestore").addEventListener("click",function(){ closePops(); doRestoreClick(); });

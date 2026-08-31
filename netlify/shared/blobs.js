@@ -17,6 +17,7 @@ export const memoryMedia = () => getStore("memory-media"); // `${memId}/${i}` ->
 export const tts = () => getStore("tts");                  // `${memId}/${lang}/${textHash}` -> WAV of a read-aloud translation (cache)
 export const waContext = () => getStore("wa-context");     // fromNumber -> { treeId, personId, ts } (recent "who is this memory for")
 export const waPerson = () => getStore("wa-person");       // `${treeId}/${phone}` -> personId (which tree person a WhatsApp sender IS)
+export const backupIndex = () => getStore("backup-index"); // media key -> { size, ts } already copied to the off-site (B2) backup, so nightly runs stay incremental
 
 export function normEmail(e) {
   return String(e || "").trim().toLowerCase();

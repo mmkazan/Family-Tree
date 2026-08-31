@@ -195,6 +195,14 @@
   .menu-item{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);
     font-family:inherit;font-size:14px;padding:10px 11px;border-radius:8px;cursor:pointer}
   .menu-item:hover{background:var(--accent-soft)}
+  .menu-item.strong{font-weight:700;color:var(--olive);border:1px solid var(--olive-soft);margin-bottom:4px}
+  .menu-item.strong:hover{background:var(--olive-soft)}
+  #exportBar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9999;display:none;
+    align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:11px;
+    font-size:14px;box-shadow:0 6px 22px rgba(0,0,0,.28);max-width:88vw}
+  #exportBar.show{display:flex}
+  #exportBar .sp{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
   .card.flash{animation:cardflash 1.3s ease}
   @keyframes cardflash{0%,100%{box-shadow:var(--shadow)}30%,60%{box-shadow:0 0 0 3px var(--accent),0 0 22px 4px var(--accent-soft)}}
   .card .status{position:absolute;top:11px;right:12px;font-size:12px;line-height:1;color:var(--faint)}
@@ -397,6 +405,7 @@
   .p-mems .k .hrt{width:15px;height:15px;color:var(--olive);vertical-align:-2px;margin-right:3px}
   .mem-leave .tx{flex:1;display:flex;flex-direction:column;line-height:1.3;min-width:0}
   .mem-leave .t1{font-weight:700;font-size:14.5px}
+  .mem-leave .t1 .mem-el{margin-left:7px;font-weight:500;font-style:italic;font-size:13px;color:var(--olive);font-family:"GFS Didot",Georgia,serif}
   .mem-leave .t2{font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis}
   .mem-leave .wa{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--olive)}
   .p-photo[style*="url"]{cursor:zoom-in}
@@ -648,11 +657,13 @@
 
 <div class="pop" id="searchPop"><input id="searchInput" type="text" autocomplete="off" /><div class="pop-res" id="searchRes"></div></div>
 <div class="pop menu" id="dataMenu">
+  <button class="menu-item strong" id="dlFull"></button>
   <button class="menu-item" id="dlBackup"></button>
   <button class="menu-item" id="dlGedcom"></button>
   <button class="menu-item" id="doRestore"></button>
 </div>
 <input type="file" id="restoreFile" accept=".json,application/json" style="display:none" />
+<div id="exportBar"><span class="sp"></span><span id="exportBarTxt"></span></div>
 <div class="move-hint" id="moveHint"><span id="moveHintTxt"></span><button class="btn" id="moveHintDone"></button></div>
 <div class="toast" id="toast"></div>
 <div id="lightbox"><img alt="" /></div>

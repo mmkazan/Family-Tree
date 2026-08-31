@@ -81,6 +81,28 @@
   function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function api(p,o){o=o||{};o.credentials="include";return fetch(p,o);}
   function when(ts){ try{return new Date(ts).toLocaleDateString();}catch(e){return "";} }
+  // ?tree=… may be the real tree id OR a readable family-name slug (e.g. "kazantzis-family").
+  // We match either, so the URL can read nicely while actions still use the real id.
+  function slugify(s){ return (s||"").toString().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,""); }
+  function scopeMatches(m){
+    if(!onlyTree) return true;
+    var k=onlyTree.toLowerCase();
+    return m.tree===onlyTree || slugify(m.treeTitle)===k;
+  }
+  // When the page is scoped to a single tree (via ?tree=… from "Review memories", or because you
+  // moderate just one tree), show THAT family's name as the heading, so it's clearly their page and
+  // not a generic shared one. With several trees and no scope, keep "Memories" and the per-tree headers.
+  function brandHeader(list){
+    var titles={}; (list||[]).forEach(function(m){ if(m.treeTitle) titles[m.tree]=m.treeTitle; });
+    var ids=Object.keys(titles);
+    var title = (ids.length===1) ? titles[ids[0]] : "";   // list is already filtered to scope before this runs
+    var nameEl=document.querySelector("header.top .name"), tagEl=document.querySelector("header.top .tagline");
+    if(title && nameEl){
+      nameEl.textContent=title;
+      if(tagEl) tagEl.textContent="Voice notes, photos and messages your family sent in — approve the ones to keep on the tree.";
+      try{ document.title=title+" — memories"; }catch(e){}
+    }
+  }
 
   api("/api/me").then(function(r){ if(r.status!==200){ location.href="/my"; return null; } return load(); });
 
@@ -93,7 +115,8 @@
     return api("/api/memories").then(function(r){return r.json();}).then(function(d){
       var list=(d&&d.memories)||[];
       peopleByTree=(d&&d.peopleByTree)||{};
-      if(onlyTree) list=list.filter(function(m){ return m.tree===onlyTree; });
+      if(onlyTree) list=list.filter(scopeMatches);
+      brandHeader(list);   // when this is one tree's page, show that family's name so it isn't a generic "Memories"
       if(!list.length){ view.innerHTML='<div class="empty">No memories to review yet. When family send a voice note, photo or message to the WhatsApp number for someone on the tree, they’ll appear here.</div>'; return; }
       // group by tree, pending first within each
       var groups={}, order=[];
@@ -113,7 +136,46 @@
       view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b); }); });
       view.querySelectorAll(".fromsel").forEach(function(s){ s.addEventListener("change",function(){ setFrom(s); }); });
       view.querySelectorAll(".sayb").forEach(function(b){ b.addEventListener("click",function(){ playTts(b); }); });
+      autoEnhance(list);   // auto-translate anything missing a translation, and warm the voices in the background
     }).catch(function(){ view.innerHTML='<div class="empty">Couldn’t load — refresh to try again.</div>'; });
+  }
+  // Background enhancement: (1) pre-generate + cache the read-aloud voice for every memory that
+  // already has a translation, so the ▶ plays instantly; (2) auto-transcribe+translate any memory
+  // that has content but no translation yet, so the reviewer sees both languages without clicking.
+  var _ttsWarmed={}, _autoTried={};
+  function warmMem(m){
+    var tr=m.tr; if(!tr||!tr.texts) return;
+    Object.keys(tr.texts).forEach(function(k){
+      if(!tr.texts[k]) return;
+      var url="/api/tts?tree="+encodeURIComponent(m.tree)+"&mem="+encodeURIComponent(m.id)+"&lang="+encodeURIComponent(k)+"&v=3";
+      if(_ttsWarmed[url]) return; _ttsWarmed[url]=1;
+      try{ fetch(url,{credentials:"same-origin"}).then(function(r){ if(!r.ok) delete _ttsWarmed[url]; }).catch(function(){ delete _ttsWarmed[url]; }); }
+      catch(e){ delete _ttsWarmed[url]; }
+    });
+  }
+  function needsTr(m){
+    if(m.tr && m.tr.texts && Object.keys(m.tr.texts).length) return false;   // already translated
+    if(_autoTried[m.tree+"/"+m.id]) return false;                            // tried once — don't loop on failures
+    var hasAudio=(m.media||[]).some(function(x){ return /^audio\//.test(x.type); });
+    return !!(m.text || hasAudio);                                           // something translatable
+  }
+  function autoEnhance(list){
+    list.forEach(function(m){ if(m.tr && m.tr.texts) warmMem(m); });   // instant: warm what's ready now
+    var todo=list.filter(needsTr);
+    if(!todo.length) return;
+    todo.forEach(function(m){ _autoTried[m.tree+"/"+m.id]=1; });
+    view.querySelectorAll('[data-act="translate"]').forEach(function(b){
+      var id=b.getAttribute("data-mem");
+      if(todo.some(function(m){ return m.id===id; })){ b.disabled=true; b.textContent="Translating…"; }
+    });
+    mToast(todo.length===1?"Translating a new memory…":("Translating "+todo.length+" new memories…"));
+    (function next(i){
+      if(i>=todo.length){ load(); return; }   // re-render once at the end; warmMem then runs for the fresh translations
+      var m=todo[i];
+      api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tree:m.tree,mem:m.id,action:"translate"})})
+        .then(function(r){return r.json();}).catch(function(){return null;})
+        .then(function(){ next(i+1); });
+    })(0);
   }
 
   function media(m){

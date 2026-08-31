@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Kazantzis family tree — bilingual (Greek/English), collaborative, with a life-locations map. Netlify Functions + Blobs.",
   "dependencies": {
-    "@netlify/blobs": "^8.1.0"
+    "@netlify/blobs": "^8.1.0",
+    "aws4fetch": "^1.0.20"
   }
 }
