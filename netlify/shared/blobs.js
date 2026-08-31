@@ -14,6 +14,7 @@ export const editorIndex = () => getStore("editor-index"); // normalised email -
 // WhatsApp "leave a memory" pipeline (Twilio inbound):
 export const memories = () => getStore("memories");        // `${treeId}/${memId}` -> { id,treeId,personId,from,fromName,text,media:[{key,type}],ts,status }
 export const memoryMedia = () => getStore("memory-media"); // `${memId}/${i}` -> raw bytes (contentType in metadata)
+export const tts = () => getStore("tts");                  // `${memId}/${lang}/${textHash}` -> WAV of a read-aloud translation (cache)
 export const waContext = () => getStore("wa-context");     // fromNumber -> { treeId, personId, ts } (recent "who is this memory for")
 
 export function normEmail(e) {

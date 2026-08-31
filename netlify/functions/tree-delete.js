@@ -3,7 +3,7 @@
 // the account. The GDPR "delete my data" control. Triggered by the owner in the
 // UI with an explicit confirmation.
 import { currentUser } from "../shared/session.js";
-import { accounts, trees, snapshots, memories, memoryMedia } from "../shared/blobs.js";
+import { accounts, trees, snapshots, memories, memoryMedia, tts } from "../shared/blobs.js";
 import { purgeTreeFromEditors } from "../shared/roles.js";
 import { deleteTreeMedia } from "../shared/storage.js";
 
@@ -41,6 +41,8 @@ export default async (req) => {
       for (let i = 0; i < ((rec && rec.media) || []).length; i++) {
         try { await memoryMedia().delete(`${rec.id}/${i}`); } catch {}
       }
+      // read-aloud audio cache for this memory
+      try { const tl = await tts().list({ prefix: `${rec.id}/` }); for (const x of (tl.blobs || [])) await tts().delete(x.key); } catch {}
       await memories().delete(b.key);
     }
   } catch (e) {

@@ -70,6 +70,58 @@ export async function memoryBilingual({ audioB64, audioMime, text, langs }) {
   return parseResult(raw, pair);
 }
 
+// ---- Text-to-speech (read a translation aloud for relatives who can't read well) ----
+// Uses the SAME Gemini key. Gemini TTS auto-detects language, so Greek text → Greek speech.
+// Returns { wav: Buffer, mime:"audio/wav" } or null. Env:
+//   GEMINI_TTS_MODEL — default gemini-2.5-flash-preview-tts (set to a 3.x tts model if preferred)
+//   GEMINI_TTS_VOICE — default Kore (one of Gemini's prebuilt voice names)
+export async function speak(text) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key || !text) return null;
+  const model = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+  const voice = process.env.GEMINI_TTS_VOICE || "Kore";
+  const body = {
+    contents: [{ parts: [{ text: String(text).slice(0, 4000) }] }],
+    generationConfig: {
+      responseModalities: ["AUDIO"],
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+    },
+  };
+  let res;
+  try {
+    res = await fetch(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body),
+    });
+  } catch (e) { console.warn("[gemini-tts] fetch:", e && e.message); return null; }
+  if (!res.ok) { console.warn("[gemini-tts]", res.status, (await res.text().catch(() => "")).slice(0, 300)); return null; }
+  let part;
+  try {
+    const j = await res.json();
+    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+    part = parts.find((p) => p.inlineData && p.inlineData.data);
+  } catch { return null; }
+  if (!part) return null;
+  const mime = part.inlineData.mimeType || "";
+  const rate = (/(?:rate=)(\d+)/.exec(mime) || [])[1];
+  const pcm = Buffer.from(part.inlineData.data, "base64");
+  return { wav: pcmToWav(pcm, rate ? parseInt(rate, 10) : 24000, 1, 16), mime: "audio/wav" };
+}
+
+// Gemini TTS returns raw signed 16-bit little-endian PCM; wrap it in a 44-byte WAV
+// header so a browser <audio> can play it directly.
+export function pcmToWav(pcm, sampleRate, channels, bits) {
+  const blockAlign = (channels * bits) / 8;
+  const byteRate = sampleRate * blockAlign;
+  const out = Buffer.alloc(44 + pcm.length);
+  out.write("RIFF", 0); out.writeUInt32LE(36 + pcm.length, 4); out.write("WAVE", 8);
+  out.write("fmt ", 12); out.writeUInt32LE(16, 16); out.writeUInt16LE(1, 20);
+  out.writeUInt16LE(channels, 22); out.writeUInt32LE(sampleRate, 24);
+  out.writeUInt32LE(byteRate, 28); out.writeUInt16LE(blockAlign, 32); out.writeUInt16LE(bits, 34);
+  out.write("data", 36); out.writeUInt32LE(pcm.length, 40);
+  pcm.copy(out, 44);
+  return out;
+}
+
 // Tolerant parse: strip any ```json fences, JSON.parse, keep only the expected langs.
 export function parseResult(raw, pair) {
   let s = String(raw || "").trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();

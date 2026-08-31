@@ -30,6 +30,7 @@
   .btn.ghost{background:transparent;color:var(--muted);border-color:var(--hair)}
   .btn.ghost:hover{border-color:var(--danger);color:var(--danger)}
   .btn.small{padding:5px 12px;font-size:.82rem}
+  .btn.saved{background:var(--olive);border-color:var(--olive);color:#fff}
   .trbox{margin:12px 0 4px;padding:11px 12px;background:var(--surface-2);border:1px solid var(--hair);border-radius:9px}
   .trhint{font-size:.78rem;color:var(--faint);margin-bottom:8px}
   .trl{display:block;margin-bottom:8px}
@@ -137,10 +138,11 @@
     if(action==="savetr"){ var box=b.closest(".trbox"), texts={};
       if(box) box.querySelectorAll(".trtext").forEach(function(t){ texts[t.getAttribute("data-lang")]=t.value; });
       payload.tr={sourceLang:(box&&box.getAttribute("data-src"))||"", texts:texts}; }
-    var oldTxt=b.textContent; b.disabled=true; if(action==="translate")b.textContent="Working…";
+    var oldTxt=b.textContent; b.disabled=true; if(action==="translate")b.textContent="Working…"; if(action==="savetr")b.textContent="Saving…";
     api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
       .then(function(r){return r.json();}).then(function(j){
         if(j && j.ok===false){ alert(j.configured===false ? "Translation isn’t switched on yet — add the Gemini key in Netlify." : "Couldn’t translate — try again."); b.disabled=false; b.textContent=oldTxt; return; }
+        if(action==="savetr"){ b.textContent="Saved ✓"; b.classList.add("saved"); setTimeout(function(){ b.textContent=oldTxt; b.classList.remove("saved"); b.disabled=false; },1600); return; }  // confirm in place, no jarring reload
         load();
       }).catch(function(){ alert("Couldn’t update — try again."); b.disabled=false; b.textContent=oldTxt; });
   }

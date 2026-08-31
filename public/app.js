@@ -871,6 +871,15 @@
   // Brand outline pin (currentColor) — replaces the 📍 emoji in the "location set" indicator,
   // matching the app's stroke-icon style. Inherits the coordtag's olive "set" colour.
   var PIN_MINI='<svg class="pinmini" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s6-5.3 6-10a6 6 0 10-12 0c0 4.7 6 10 6 10z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.7"/></svg>';
+  var SPEAK_SVG='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  // Read a translation aloud (Gemini TTS via /api/tts) for relatives who can't read well.
+  window.__say=function(btn){ try{
+    var url=btn.getAttribute("data-url"); if(!url) return;
+    if(window.__sayAudio){ try{ window.__sayAudio.pause(); }catch(e){} if(window.__sayBtn) window.__sayBtn.classList.remove("saying"); }
+    var a=new Audio(url); window.__sayAudio=a; window.__sayBtn=btn; btn.classList.add("saying");
+    var done=function(){ btn.classList.remove("saying"); };
+    a.onended=done; a.onerror=done; a.play().catch(done);
+  }catch(e){} };
   function loadMemories(){
     if(!accountMode || !treeId) return;   // memories are per-account-tree only
     // Owner (session) uses the review endpoint; a family member on a share link uses
@@ -900,15 +909,20 @@
     if(/^image\//.test(t)) return '<img class="m-img" src="'+u+'" alt="memory" loading="lazy" data-full="'+u+'"/>';
     return '<a class="p-mediabtn" href="'+u+'" target="_blank" rel="noopener noreferrer"><span class="ml">Attachment</span><span class="go">↗</span></a>';
   }
+  // URL to read a memory's translation aloud in language k (account mode; carries the viewer's token).
+  function ttsUrl(memId,k){ if(!accountMode||!treeId||!memId) return ""; var u="/api/tts?tree="+encodeURIComponent(treeId)+"&mem="+encodeURIComponent(memId)+"&lang="+encodeURIComponent(k); if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
   // Bilingual transcript/translation (Gemini). Viewer's own language shows first &
-  // prominent, the other beneath — so yiayia's Greek and its English sit together.
-  function memTrHtml(tr){
-    if(!tr || !tr.texts) return "";
+  // prominent, the other beneath — each with a 🔊 read-aloud button.
+  function memTrHtml(m){
+    var tr=m&&m.tr; if(!tr || !tr.texts) return "";
     var order = (lang==="el") ? ["el","en"] : ["en","el"];
     Object.keys(tr.texts).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
     var h="", shown=0;
     order.forEach(function(k){ var t=(tr.texts[k]||"").trim(); if(!t) return;
-      h+='<div class="mem-tr '+(shown===0?"primary":"alt")+'"><span class="mem-lang">'+esc((k||"").toUpperCase())+'</span>“'+esc(t)+'”</div>';
+      var say=ttsUrl(m.id,k);
+      h+='<div class="mem-tr '+(shown===0?"primary":"alt")+'"><span class="mem-lang">'+esc((k||"").toUpperCase())+'</span>'+
+        (say?'<button type="button" class="mem-say" data-url="'+esc(say)+'" title="Read aloud" aria-label="Read aloud" onclick="window.__say&&window.__say(this)">'+SPEAK_SVG+'</button>':'')+
+        '“'+esc(t)+'”</div>';
       shown++;
     });
     return h;
@@ -921,7 +935,7 @@
       var txt=stripMemTag(m.text);
       h+='<div class="mem-card">';
       if(m.from) h+='<div class="mem-from">'+esc(m.from)+'</div>';
-      if(m.tr && m.tr.texts) h+=memTrHtml(m.tr);          // bilingual (both the family's languages)
+      if(m.tr && m.tr.texts) h+=memTrHtml(m);             // bilingual (both the family's languages) + read-aloud
       else if(txt) h+='<div class="mem-text">“'+esc(txt)+'”</div>';   // fallback: raw caption
       (m.media||[]).forEach(function(mm){ h+='<div class="mem-med">'+memMediaHtml(mm)+'</div>'; });
       h+='</div>';
