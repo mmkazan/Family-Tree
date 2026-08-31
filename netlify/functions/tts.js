@@ -8,7 +8,7 @@ import { currentUser } from "../shared/session.js";
 import { memories, tts as ttsStore } from "../shared/blobs.js";
 import { loadTree, roleFor, memVisibleToRole } from "../shared/tenant.js";
 import { emailForUid, isEditorEmail } from "../shared/roles.js";
-import { speak } from "../shared/gemini.js";
+import { speak, voiceForSex } from "../shared/gemini.js";
 
 export default async (req) => {
   const url = new URL(req.url);
@@ -42,7 +42,11 @@ export default async (req) => {
   const text = rec.tr && rec.tr.texts && rec.tr.texts[lang];
   if (!text) return new Response("no text", { status: 404 });
 
-  const hash = crypto.createHash("sha256").update(lang + "\n" + text).digest("hex").slice(0, 12);
+  // Voice matches the SENDER's gender when we know who they are (mapped to a tree person).
+  const sender = rec.fromPersonId && (t.people || {})[rec.fromPersonId];
+  const voice = voiceForSex(sender && sender.sex);
+
+  const hash = crypto.createHash("sha256").update(lang + "\n" + voice + "\n" + text).digest("hex").slice(0, 12);
   const key = `${mem}/${lang}/${hash}`;
 
   // Cached?
@@ -52,7 +56,7 @@ export default async (req) => {
   } catch {}
 
   // Synthesise + cache.
-  const out = await speak(text);
+  const out = await speak(text, voice);
   if (!out || !out.wav) return new Response("tts unavailable", { status: 503 });
   try { await ttsStore().set(key, out.wav, { metadata: { contentType: "audio/wav" } }); } catch {}
   return audio(out.wav);

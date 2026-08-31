@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <style>
   :root{color-scheme:light;--bg:#e9ebe4;--surface:#f8f8f3;--surface-2:#f1f2ea;--ink:#17262b;--muted:#5d6b6f;--faint:#8a9599;
-    --accent:#1e5c6e;--accent-deep:#17495a;--olive:#6f9b6e;--hair:#d7d8cd;--danger:#a5453a;--gold:#8a754a;
+    --accent:#1e5c6e;--accent-deep:#17495a;--olive:#6f9b6e;--olive-soft:#e3ece0;--hair:#d7d8cd;--danger:#a5453a;--gold:#8a754a;
     --shadow:0 1px 2px rgba(23,38,43,.08),0 6px 18px rgba(23,38,43,.09);--radius:11px}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
@@ -38,6 +38,17 @@
   .trtext{width:100%;font:inherit;font-size:.95rem;line-height:1.45;color:var(--ink);background:var(--surface);border:1px solid var(--hair);border-radius:7px;padding:8px 10px;resize:vertical}
   .trtext:focus{outline:none;border-color:var(--accent)}
   .trrow{display:flex;gap:8px;margin-top:2px}
+  .fromrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
+  .fromlbl{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+  .fromsel{font:inherit;font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--hair);border-radius:7px;padding:5px 8px;max-width:220px}
+  .fromsel:focus{outline:none;border-color:var(--accent)}
+  .fromsaved{font-size:.78rem;color:var(--muted)}.fromsaved.good{color:var(--olive)}.fromsaved.bad{color:var(--danger)}
+  .trlang{display:flex;align-items:center;gap:6px}
+  .sayb{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:1px solid var(--hair);border-radius:50%;
+    background:var(--surface);color:var(--olive);cursor:pointer;transition:.15s}
+  .sayb:hover{border-color:var(--olive);background:var(--olive-soft)}
+  .sayb svg{width:12px;height:12px}
+  .sayb.saying{background:var(--olive);color:#fff;border-color:var(--olive)}
   .pill{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-left:auto}
   .pill.ok{color:var(--olive)}
   .grp-head{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--hair)}
@@ -75,10 +86,13 @@
 
   function param(n){ try{ return new URLSearchParams(location.search).get(n)||""; }catch(e){ return ""; } }
   var onlyTree=param("tree");
+  var peopleByTree={}, _ttsAudio=null;
+  var SPEAKER='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
   function load(){
     return api("/api/memories").then(function(r){return r.json();}).then(function(d){
       var list=(d&&d.memories)||[];
+      peopleByTree=(d&&d.peopleByTree)||{};
       if(onlyTree) list=list.filter(function(m){ return m.tree===onlyTree; });
       if(!list.length){ view.innerHTML='<div class="empty">No memories to review yet. When family send a voice note, photo or message to the WhatsApp number for someone on the tree, they’ll appear here.</div>'; return; }
       // group by tree, pending first within each
@@ -97,6 +111,8 @@
       }).join("");
       view.innerHTML=html;
       view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b); }); });
+      view.querySelectorAll(".fromsel").forEach(function(s){ s.addEventListener("change",function(){ setFrom(s); }); });
+      view.querySelectorAll(".sayb").forEach(function(b){ b.addEventListener("click",function(){ playTts(b); }); });
     }).catch(function(){ view.innerHTML='<div class="empty">Couldn’t load — refresh to try again.</div>'; });
   }
 
@@ -111,7 +127,8 @@
   function trBlock(m){
     var tr=m.tr, langs = (tr&&tr.texts)?Object.keys(tr.texts):[];
     var rows = langs.map(function(k){
-      return '<label class="trl"><span class="trlang">'+esc(LNAME[k]||k.toUpperCase())+'</span>'+
+      return '<label class="trl"><span class="trlang">'+esc(LNAME[k]||k.toUpperCase())+
+        '<button type="button" class="sayb" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'" data-lang="'+esc(k)+'" title="Read aloud (also warms it for the tree)" aria-label="Read aloud">'+SPEAKER+'</button></span>'+
         '<textarea class="trtext" data-lang="'+esc(k)+'" rows="2">'+esc(tr.texts[k]||"")+'</textarea></label>';
     }).join("");
     var has=langs.length>0;
@@ -122,6 +139,31 @@
       '<div class="trhint">'+(has?'Transcript &amp; translation — edit if anything’s off, then Save.':'Transcribe &amp; translate into both languages.')+'</div>'+
       rows+btns+'</div>';
   }
+  // "From" dropdown — assign the WhatsApp sender to a tree person (once). After that,
+  // messages from that number auto-map, so you never assign the same person again.
+  function fromBlock(m){
+    var people=peopleByTree[m.tree]||[];
+    var placeholder=m.fromName||"WhatsApp sender";
+    var opts='<option value="">— not linked ('+esc(placeholder)+') —</option>'+
+      people.map(function(p){ return '<option value="'+esc(p.id)+'"'+(p.id===m.fromPersonId?' selected':'')+'>'+esc(p.name)+'</option>'; }).join("");
+    return '<div class="fromrow"><span class="fromlbl">From</span>'+
+      '<select class="fromsel" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">'+opts+'</select>'+
+      '<span class="fromsaved" id="fs_'+esc(m.id)+'"></span></div>';
+  }
+  function setFrom(sel){
+    var tree=sel.getAttribute("data-tree"), mem=sel.getAttribute("data-mem"), pid=sel.value;
+    var note=document.getElementById("fs_"+mem); if(note){ note.textContent="Saving…"; note.className="fromsaved"; }
+    api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tree:tree,mem:mem,action:"setfrom",fromPersonId:pid})})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j&&j.ok){ if(note){ note.textContent=pid?"✓ saved — future messages auto-link":"unlinked"; note.className="fromsaved good"; } }
+        else if(note){ note.textContent="couldn’t save"; note.className="fromsaved bad"; }
+      }).catch(function(){ if(note){ note.textContent="couldn’t save"; note.className="fromsaved bad"; } });
+  }
+  function playTts(b){
+    var url="/api/tts?tree="+encodeURIComponent(b.getAttribute("data-tree"))+"&mem="+encodeURIComponent(b.getAttribute("data-mem"))+"&lang="+encodeURIComponent(b.getAttribute("data-lang"));
+    if(_ttsAudio){ try{_ttsAudio.pause();}catch(e){} } _ttsAudio=new Audio(url); b.classList.add("saying");
+    var done=function(){ b.classList.remove("saying"); }; _ttsAudio.onended=done; _ttsAudio.onerror=done; _ttsAudio.play().catch(done);
+  }
   function card(m){
     var pill = m.status==="approved" ? '<span class="pill ok">on the tree</span>' : '<span class="pill">to review</span>';
     var meds=(m.media||[]).map(function(x){return '<div class="med">'+media(x)+'</div>';}).join("");
@@ -129,7 +171,7 @@
       '<div class="row"><button class="btn" data-act="approve" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Keep on the tree</button>'+
       '<button class="btn ghost" data-act="reject" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Hide</button></div>';
     return '<div class="card"><div style="display:flex;align-items:baseline"><span class="for serif">For '+esc(m.personName)+'</span>'+pill+'</div>'+
-      '<div class="meta">from '+esc(m.from||"family")+' · '+when(m.ts)+'</div>'+
+      '<div class="meta">'+when(m.ts)+'</div>'+fromBlock(m)+
       (m.text?'<div class="txt">“'+esc(m.text)+'”</div>':'')+meds+trBlock(m)+actions+'</div>';
   }
   function act(b){

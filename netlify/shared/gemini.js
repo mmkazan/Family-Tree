@@ -75,11 +75,11 @@ export async function memoryBilingual({ audioB64, audioMime, text, langs }) {
 // Returns { wav: Buffer, mime:"audio/wav" } or null. Env:
 //   GEMINI_TTS_MODEL — default gemini-2.5-flash-preview-tts (set to a 3.x tts model if preferred)
 //   GEMINI_TTS_VOICE — default Kore (one of Gemini's prebuilt voice names)
-export async function speak(text) {
+export async function speak(text, voice) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || !text) return null;
   const model = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
-  const voice = process.env.GEMINI_TTS_VOICE || "Kore";
+  voice = voice || process.env.GEMINI_TTS_VOICE || "Kore";
   const body = {
     contents: [{ parts: [{ text: String(text).slice(0, 4000) }] }],
     generationConfig: {
@@ -105,6 +105,14 @@ export async function speak(text) {
   const rate = (/(?:rate=)(\d+)/.exec(mime) || [])[1];
   const pcm = Buffer.from(part.inlineData.data, "base64");
   return { wav: pcmToWav(pcm, rate ? parseInt(rate, 10) : 24000, 1, 16), mime: "audio/wav" };
+}
+
+// Pick a voice for a person's sex (m/f/other). Env-overridable so voices can be tuned
+// without a code change. Defaults are commonly male-/female-sounding Gemini voices.
+export function voiceForSex(sex) {
+  if (sex === "m") return process.env.GEMINI_TTS_VOICE_M || "Charon";
+  if (sex === "f") return process.env.GEMINI_TTS_VOICE_F || "Kore";
+  return process.env.GEMINI_TTS_VOICE || "Kore";
 }
 
 // Gemini TTS returns raw signed 16-bit little-endian PCM; wrap it in a 44-byte WAV

@@ -4,7 +4,7 @@
 //          approve: attaches a text memory to the person's notes (shows on the tree today);
 //                   voice/photo attachment to the tree card is the next step.
 import { currentUser } from "../shared/session.js";
-import { accounts, trees, memories, memoryMedia, normEmail } from "../shared/blobs.js";
+import { accounts, trees, memories, memoryMedia, waPerson, normEmail } from "../shared/blobs.js";
 import { stripMemTags } from "../shared/memtag.js";
 import { editorTreeIds, isEditorEmail } from "../shared/roles.js";
 import { memoryBilingual, geminiConfigured } from "../shared/gemini.js";
@@ -13,6 +13,13 @@ const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 const titleOf = (t) => (t && t.title && (t.title.en || t.title.el)) || "Family tree";
+const personLabel = (p) => (p && (p.nameEn || p.nameEl)) || "";
+const phoneOf = (rec) => String((rec && rec.from) || "").replace(/^whatsapp:/i, "").trim();
+// Who to show as the memory's sender: the mapped tree person's name, else the WhatsApp name.
+const fromLabel = (t, rec) => {
+  const sp = rec.fromPersonId && (t.people || {})[rec.fromPersonId];
+  return sp ? personLabel(sp) : (rec.fromName || rec.from || "");
+};
 
 // The family's language pair for a tree (heritage + host). Host is English today.
 const pairFor = (t) => [((t && t.config && t.config.secondLang) || "el"), "en"];
@@ -53,12 +60,17 @@ export default async (req) => {
 
   if (req.method === "GET") {
     const out = [];
+    const peopleByTree = {};
     for (const tid of ownIds.concat(editIds)) {
       const t = await trees().get(tid, { type: "json" });
       if (!t) continue;
       const isOwner = t.ownerId === sess.uid;
       if (!isOwner && !isEditorEmail(t, email)) continue;   // stale index guard
       const role = isOwner ? "owner" : "editor";
+      // people list for the "who sent this" dropdown on the review page
+      peopleByTree[tid] = Object.keys(t.people || {})
+        .map((id) => ({ id, name: personLabel(t.people[id]) || "Unnamed" }))
+        .sort((a, b) => a.name.localeCompare(b.name));
       let listed; try { listed = await memories().list({ prefix: tid + "/" }); } catch { listed = { blobs: [] }; }
       for (const b of (listed.blobs || [])) {
         const rec = await memories().get(b.key, { type: "json" });
@@ -67,7 +79,9 @@ export default async (req) => {
         out.push({
           id: rec.id, tree: tid, treeTitle: titleOf(t), yourRole: role, personId: rec.personId,
           personName: (p.nameEn || p.nameEl || "Unknown"),
-          from: rec.fromName || rec.from || "", text: stripMemTags(rec.text || ""),
+          from: fromLabel(t, rec), fromPersonId: rec.fromPersonId || "",
+          fromName: rec.fromName || rec.from || "",   // the raw WhatsApp name, for the dropdown hint
+          text: stripMemTags(rec.text || ""),
           tr: rec.tr || null,
           status: rec.status, ts: rec.ts,
           media: (rec.media || []).map((m, i) => ({
@@ -78,7 +92,7 @@ export default async (req) => {
       }
     }
     out.sort((a, b) => b.ts - a.ts);
-    return json({ memories: out });
+    return json({ memories: out, peopleByTree });
   }
 
   if (req.method === "POST") {
@@ -112,6 +126,18 @@ export default async (req) => {
       try { const tr = await generateTr(t, rec); if (tr) { rec.tr = tr; await memories().setJSON(`${tree}/${mem}`, rec); return json({ ok: true, tr }); } }
       catch (e) { console.warn("[memories] translate:", e && e.message); }
       return json({ ok: false, error: "translate_failed", configured: geminiConfigured() });
+    }
+    // Map the WhatsApp sender to a person in the tree, so the memory shows their real
+    // name (not "Matt Kaz") and the read-aloud voice matches their gender. Remembers the
+    // phone→person link so future messages from that number map automatically.
+    if (action === "setfrom") {
+      const pid = body.fromPersonId || "";
+      if (pid && !((t.people || {})[pid])) return json({ error: "bad_person" }, 400);
+      if (pid) rec.fromPersonId = pid; else delete rec.fromPersonId;
+      await memories().setJSON(`${tree}/${mem}`, rec);
+      const phone = phoneOf(rec);
+      if (phone) { try { if (pid) await waPerson().set(`${tree}/${phone}`, pid); else await waPerson().delete(`${tree}/${phone}`); } catch {} }
+      return json({ ok: true, fromPersonId: pid, from: fromLabel(t, rec) });
     }
     // Save an edited transcript/translation (a garbled auto-transcript of a precious
     // message is worse than none — owner/editor can fix it).

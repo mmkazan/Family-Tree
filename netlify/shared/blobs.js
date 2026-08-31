@@ -16,6 +16,7 @@ export const memories = () => getStore("memories");        // `${treeId}/${memId
 export const memoryMedia = () => getStore("memory-media"); // `${memId}/${i}` -> raw bytes (contentType in metadata)
 export const tts = () => getStore("tts");                  // `${memId}/${lang}/${textHash}` -> WAV of a read-aloud translation (cache)
 export const waContext = () => getStore("wa-context");     // fromNumber -> { treeId, personId, ts } (recent "who is this memory for")
+export const waPerson = () => getStore("wa-person");       // `${treeId}/${phone}` -> personId (which tree person a WhatsApp sender IS)
 
 export function normEmail(e) {
   return String(e || "").trim().toLowerCase();

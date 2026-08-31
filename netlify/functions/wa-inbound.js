@@ -8,7 +8,7 @@
 // pre-fills  [mem:<treeId>:<personId>] ) is captured as a memory. ANYTHING ELSE gets the
 // Trey bounce reply, so Trey's own senders see no change. Sending is untouched either way.
 import crypto from "node:crypto";
-import { memories, memoryMedia, waContext, trees } from "../shared/blobs.js";
+import { memories, memoryMedia, waContext, waPerson, trees } from "../shared/blobs.js";
 import { newId } from "../shared/session.js";
 import { parseMemTag, stripMemTags } from "../shared/memtag.js";
 
@@ -111,7 +111,15 @@ export default async (req) => {
     }
   }
 
-  const rec = { id: memId, treeId: ctx.treeId, personId: ctx.personId, from, fromName, text: cleanText, media, ts: Date.now(), status: "pending" };
+  // If this sender's number was previously mapped to a tree person, tag the memory so it
+  // shows their real name + a gender-matched read-aloud voice automatically.
+  let fromPersonId;
+  try {
+    const phone = String(from).replace(/^whatsapp:/i, "").trim();
+    if (phone) { const mapped = await waPerson().get(`${ctx.treeId}/${phone}`); if (mapped) fromPersonId = mapped; }
+  } catch {}
+
+  const rec = { id: memId, treeId: ctx.treeId, personId: ctx.personId, from, fromName, fromPersonId, text: cleanText, media, ts: Date.now(), status: "pending" };
   try { await memories().setJSON(`${ctx.treeId}/${memId}`, rec); } catch {}
 
   const forWhom = personName ? " for " + personName : "";

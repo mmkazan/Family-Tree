@@ -42,9 +42,10 @@ export default async (req) => {
     const person = people[rec.personId];
     if (!person) continue;
     if (!isOwner && !memVisibleToRole(person, role, hideLiving)) continue;   // living-privacy
+    const senderP = rec.fromPersonId && people[rec.fromPersonId];
     out.push({
       id: rec.id, tree: id, personId: rec.personId, status: "approved",
-      from: rec.fromName || rec.from || "",
+      from: senderP ? (senderP.nameEn || senderP.nameEl || "") : (rec.fromName || rec.from || ""),
       text: stripMemTags(rec.text || ""),
       tr: rec.tr || null,
       ts: rec.ts,
