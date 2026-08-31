@@ -31,8 +31,18 @@ export default async (req) => {
   if (role === "none") return new Response("forbidden", { status: 403 });   // names are visible to anyone with tree access
 
   const voice = voiceForSex(sex);   // pronounce a person's name in a voice matching their gender
-  const accent = lang === "en" ? ", in a British accent" : lang === "it" ? ", with Italian pronunciation" : lang === "el" ? ", in Greek" : "";
-  const style = "Say this name clearly and slowly" + accent;
+  // Steer pronunciation by the ACTUAL script of the name, not just the requested language.
+  // A name that has no real Greek spelling (e.g. "Goldie" left in Latin letters) must NOT be
+  // forced "in Greek" — Gemini then returns no audio. Only ask for Greek when the text is
+  // genuinely written in Greek letters; otherwise pronounce it naturally.
+  const hasGreek = /[Ͱ-Ͽἀ-῿]/.test(text);
+  const accent = hasGreek ? ", in Greek"
+    : lang === "en" ? ", in a British accent"
+    : lang === "it" ? ", with Italian pronunciation"
+    : "";                                   // Latin text asked for as Greek → natural, don't break it
+  // "clearly, at a natural pace" — NOT "slowly": telling Gemini to speak slowly makes it
+  // drag the name out unnaturally. We want a clear, normal-speed pronunciation.
+  const style = "Pronounce this name clearly, at a natural pace" + accent;
 
   const hash = crypto.createHash("sha256").update(lang + "\n" + voice + "\n" + style + "\n" + text).digest("hex").slice(0, 12);
   const key = `name/${tree}/${hash}`;

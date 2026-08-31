@@ -108,14 +108,20 @@ export async function speak(text, voice, style) {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
   };
-  const res = await geminiFetch(model, body, 2);   // fewer retries — a TTS 429 is quota, retrying just burns more
-  if (!res) return null;
+  // The model occasionally returns 200 with a text part and NO audio (a transient miss that
+  // left names silently un-spoken). Try twice before giving up — the second try almost always
+  // comes back with audio.
   let part;
-  try {
-    const j = await res.json();
-    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
-    part = parts.find((p) => p.inlineData && p.inlineData.data);
-  } catch { return null; }
+  for (let attempt = 0; attempt < 2 && !part; attempt++) {
+    const res = await geminiFetch(model, body, 2);   // geminiFetch itself retries 429 / 5xx
+    if (!res) return null;
+    try {
+      const j = await res.json();
+      const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+      part = parts.find((p) => p.inlineData && p.inlineData.data);
+    } catch { return null; }
+    if (!part && attempt === 0) await sleep(400);
+  }
   if (!part) return null;
   const mime = part.inlineData.mimeType || "";
   const rate = (/(?:rate=)(\d+)/.exec(mime) || [])[1];
