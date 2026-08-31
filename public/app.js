@@ -911,6 +911,10 @@
   }
   // URL to read a memory's translation aloud in language k (account mode; carries the viewer's token).
   function ttsUrl(memId,k){ if(!accountMode||!treeId||!memId) return ""; var u="/api/tts?tree="+encodeURIComponent(treeId)+"&mem="+encodeURIComponent(memId)+"&lang="+encodeURIComponent(k); if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
+  // "Say the name" — a 🔊 that pronounces a name aloud (Gemini TTS via /api/say).
+  function sayNameBtn(text,langCode){ if(!accountMode||!treeId||!text) return "";
+    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(langCode||""); if(shareToken)u+="&k="+encodeURIComponent(shareToken);
+    return ' <button type="button" class="name-say" data-url="'+esc(u)+'" title="Hear this name" aria-label="Hear this name" onclick="window.__say&&window.__say(this)">'+SPEAK_SVG+'</button>'; }
   // Bilingual transcript/translation (Gemini). Viewer's own language shows first &
   // prominent, the other beneath — each with a 🔊 read-aloud button.
   function memTrHtml(m){
@@ -960,8 +964,8 @@
     var nm=nameFor(p,lang), yr=yearsFor(p);
     $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
     var h='<div class="profile"><div class="p-photo'+(yr.dec?" dec":"")+'" id="prof_photo">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>';
-    h+='<div class="p-name">'+esc(nm.primary||nm.secondary||T("newPerson"))+'</div>';
-    if(nm.primary&&nm.secondary) h+='<div class="p-alt">'+esc(nm.secondary)+'</div>';
+    h+='<div class="p-name">'+esc(nm.primary||nm.secondary||T("newPerson"))+sayNameBtn(nm.primary||nm.secondary, lang)+'</div>';
+    if(nm.primary&&nm.secondary) h+='<div class="p-alt">'+esc(nm.secondary)+sayNameBtn(nm.secondary, (lang==="el"?"en":"el"))+'</div>';
     if(p.nick) h+='<div class="p-alt">"'+esc(p.nick)+'"</div>';
     var dp=[]; if(p.birth)dp.push(T("born")+" "+p.birth); if(p.death)dp.push(T("died")+" "+p.death);
     if(dp.length) h+='<div class="p-dates">'+(yr.dec?"† ":"")+esc(dp.join("   ·   "))+'</div>';

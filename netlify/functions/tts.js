@@ -45,8 +45,10 @@ export default async (req) => {
   // Voice matches the SENDER's gender when we know who they are (mapped to a tree person).
   const sender = rec.fromPersonId && (t.people || {})[rec.fromPersonId];
   const voice = voiceForSex(sender && sender.sex);
+  // English defaults to an American accent; nudge it to British (env-overridable, "" to disable).
+  const style = lang === "en" ? (process.env.GEMINI_TTS_EN_STYLE !== undefined ? process.env.GEMINI_TTS_EN_STYLE : "Read this warmly in a British English accent") : "";
 
-  const hash = crypto.createHash("sha256").update(lang + "\n" + voice + "\n" + text).digest("hex").slice(0, 12);
+  const hash = crypto.createHash("sha256").update(lang + "\n" + voice + "\n" + style + "\n" + text).digest("hex").slice(0, 12);
   const key = `${mem}/${lang}/${hash}`;
 
   // Cached?
@@ -56,7 +58,7 @@ export default async (req) => {
   } catch {}
 
   // Synthesise + cache.
-  const out = await speak(text, voice);
+  const out = await speak(text, voice, style);
   if (!out || !out.wav) return new Response("tts unavailable", { status: 503 });
   try { await ttsStore().set(key, out.wav, { metadata: { contentType: "audio/wav" } }); } catch {}
   return audio(out.wav);

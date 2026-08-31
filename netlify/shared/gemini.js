@@ -21,6 +21,33 @@ const langName = (c) => LANG_NAME[c] || c;
 
 export function geminiConfigured() { return !!process.env.GEMINI_API_KEY; }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// POST to a Gemini model with retries on transient failures (429 / 5xx / network blips).
+// Those are the intermittent "Couldn't update — try again" errors; a couple of retries
+// with backoff clears almost all of them. Returns an ok Response, or null after giving up.
+async function geminiFetch(model, body, tries = 3) {
+  if (!process.env.GEMINI_API_KEY) return null;
+  for (let a = 0; a < tries; a++) {
+    let res;
+    try {
+      res = await fetch(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      if (a === tries - 1) { console.warn("[gemini] fetch:", e && e.message); return null; }
+      await sleep(500 * (a + 1)); continue;
+    }
+    if (res.ok) return res;
+    const retryable = res.status === 429 || res.status >= 500;   // overloaded / transient
+    const txt = await res.text().catch(() => "");
+    if (!retryable || a === tries - 1) { console.warn("[gemini]", res.status, txt.slice(0, 200)); return null; }
+    await sleep(700 * (a + 1));
+  }
+  return null;
+}
+
 // langs: the family's two language codes, e.g. ["el","en"] (order doesn't matter).
 // Returns { sourceLang, texts: { <lang>: "…", … } } or null.
 export async function memoryBilingual({ audioB64, audioMime, text, langs }) {
@@ -49,16 +76,8 @@ export async function memoryBilingual({ audioB64, audioMime, text, langs }) {
     generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
   };
 
-  let res;
-  try {
-    res = await fetch(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify(body),
-    });
-  } catch (e) { console.warn("[gemini] fetch failed:", e && e.message); return null; }
-
-  if (!res.ok) { console.warn("[gemini]", res.status, (await res.text().catch(() => "")).slice(0, 300)); return null; }
+  const res = await geminiFetch(model, body);
+  if (!res) return null;
 
   let raw = "";
   try {
@@ -75,25 +94,22 @@ export async function memoryBilingual({ audioB64, audioMime, text, langs }) {
 // Returns { wav: Buffer, mime:"audio/wav" } or null. Env:
 //   GEMINI_TTS_MODEL — default gemini-2.5-flash-preview-tts (set to a 3.x tts model if preferred)
 //   GEMINI_TTS_VOICE — default Kore (one of Gemini's prebuilt voice names)
-export async function speak(text, voice) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || !text) return null;
+export async function speak(text, voice, style) {
+  if (!process.env.GEMINI_API_KEY || !text) return null;
   const model = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
   voice = voice || process.env.GEMINI_TTS_VOICE || "Kore";
+  // Optional style/accent steer (e.g. "Read this in a British English accent"). Gemini TTS
+  // reads only the text after the leading instruction, so we prepend it as a directive.
+  const prompt = style ? (String(style).replace(/[:：]\s*$/, "") + ": " + String(text)) : String(text);
   const body = {
-    contents: [{ parts: [{ text: String(text).slice(0, 4000) }] }],
+    contents: [{ parts: [{ text: prompt.slice(0, 4000) }] }],
     generationConfig: {
       responseModalities: ["AUDIO"],
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
   };
-  let res;
-  try {
-    res = await fetch(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body),
-    });
-  } catch (e) { console.warn("[gemini-tts] fetch:", e && e.message); return null; }
-  if (!res.ok) { console.warn("[gemini-tts]", res.status, (await res.text().catch(() => "")).slice(0, 300)); return null; }
+  const res = await geminiFetch(model, body);
+  if (!res) return null;
   let part;
   try {
     const j = await res.json();

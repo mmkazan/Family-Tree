@@ -49,6 +49,9 @@ export default async (req) => {
     console.warn("[tree-delete] memory cleanup:", e && e.message);
   }
 
+  // cached name-pronunciation audio for this tree
+  try { const nl = await tts().list({ prefix: `name/${id}/` }); for (const x of (nl.blobs || [])) await tts().delete(x.key); } catch {}
+
   // drop this tree's stored photos, and remove it from every editor's reverse index
   try { await deleteTreeMedia(id); } catch (e) { console.warn("[tree-delete] media cleanup:", e && e.message); }
   try { await purgeTreeFromEditors(doc); } catch (e) { console.warn("[tree-delete] editor cleanup:", e && e.message); }
