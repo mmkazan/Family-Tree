@@ -190,6 +190,16 @@
   // behaves exactly as the legacy single-tree app (passcode / share-token) — zero change for the family. ---
   var treeId="", accountMode=false;
   (function(){ var m=(location.search||"").match(/[?&]id=(t_[A-Za-z0-9_-]+)/); if(m){ treeId=m[1]; accountMode=true; } })();
+  // Legacy retirement: the bare URL used to open the OLD single-tree blob (/api/tree),
+  // which caused edits to land on the wrong copy. Send a truly-bare visit to /my (the
+  // account entry) instead. Anyone arriving with a share link — token in the URL or
+  // remembered — is untouched, so existing view/edit links keep working.
+  (function(){
+    if(accountMode) return;
+    var hasUrlToken = /[#&?]k=/.test(location.hash||"") || /[?&]k=/.test(location.search||"");
+    var stored=""; try{ stored=(localStorage.getItem("kz_token")||"")+(localStorage.getItem("kz_pass")||""); }catch(e){}
+    if(!hasUrlToken && !stored){ try{ location.replace("/my"); }catch(e){ location.href="/my"; } }
+  })();
   function treeEndpoint(){ return accountMode ? ("/api/tree-doc?id="+encodeURIComponent(treeId)) : "/api/tree"; }
   function authPayload(){ if(accountMode){ return shareEditToken ? {editToken:shareEditToken} : {session:true}; }
     if(passcode) return {passcode:passcode}; if(shareEditToken) return {editToken:shareEditToken}; return null; }
@@ -453,9 +463,13 @@
     var secondaryHtml=(nm.primary&&nm.secondary)?'<div class="nm secondary">'+esc(nm.secondary)+'</div>':'';
     var status=(!yr.dec&&p.birth)?'<span class="status live"></span>':'';
     var header='<div class="chead"><div class="avatar'+(yr.dec?' dec':'')+'">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div><div class="cmeta">'+primaryHtml+secondaryHtml+'</div></div>';
-    var media=p.media||[]; var na=media.filter(function(m){return m.kind==="audio";}).length, nv=media.filter(function(m){return m.kind==="video";}).length;
+    // One combined media counter (photos, videos, audio links + memories). Goes green
+    // when this viewer hasn't yet opened the newest item on the card.
+    var nmedia=mediaTotal(p);
     var np=(p.places||[]).filter(function(x){return isNum(x.lat)&&isNum(x.lng);}).length+((isNum(p.placeLat)&&isNum(p.placeLng))?1:0);
-    var chips=[]; if(na)chips.push('<span class="chip">'+ICON.audio+na+'</span>'); if(nv)chips.push('<span class="chip">'+ICON.video+nv+'</span>'); if(np)chips.push('<span class="chip pin" style="background:var(--brass)">'+pinSvg()+np+'</span>');
+    var chips=[];
+    if(nmedia)chips.push('<span class="chip media'+(nmedia>seenCount(p.id)?' unseen':'')+'" title="Photos, videos & memories">'+ICON.image+nmedia+'</span>');
+    if(np)chips.push('<span class="chip pin" style="background:var(--brass)">'+pinSvg()+np+'</span>');
     var chipsHtml=chips.length?'<div class="chips">'+chips.join("")+'</div>':'';
     var yrsHtml=yr.txt?'<div class="yrs">'+(yr.dec?'<span class="dag">†</span>':'')+'<span>'+esc(yr.txt)+'</span></div>':'<div class="yrs"></div>';
     var foot=(yr.txt||chips.length)?'<div class="cfoot">'+yrsHtml+chipsHtml+'</div>':'';
@@ -676,7 +690,7 @@
   function openEditor(pid,isNew){
     var p=P(pid); if(!p) return;
     editorBaseSnap = isNew ? null : cloneState();
-    editingId=pid; selectedId=pid; $("drawerFoot").style.display="";
+    editingId=pid; selectedId=pid; if(!isNew)markSeenMedia(pid); $("drawerFoot").style.display="";
     var nm=nameFor(p,lang); $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
     var html="";
     html+='<div class="photo-edit"><div class="photo-thumb" id="ph_thumb">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>'+
@@ -804,26 +818,48 @@
     var gd=driveId(url); if(gd) return '<div class="m-item">'+cap+iframeHtml("https://drive.google.com/file/d/"+gd+"/preview")+'</div>';
     var sp=spotifyEmbed(url); if(sp) return '<div class="m-item">'+cap+iframeHtml(sp,"audio")+'</div>';
     if(/soundcloud\.com\//i.test(url)) return '<div class="m-item">'+cap+iframeHtml("https://w.soundcloud.com/player/?url="+encodeURIComponent(url)+"&color=%239a7b3f&visual=false&hide_related=true&show_comments=false","audio")+'</div>';
-    if(isImg(url)||isGooglePhotoImg(url)||m.kind==="image") return '<div class="m-item">'+cap+'<img class="m-img" src="'+esc(url)+'" alt="'+esc(m.label||"")+'" loading="lazy" data-full="'+esc(url)+'"/></div>';
+    if(isEmbeddableImg(url)) return '<div class="m-item">'+cap+'<img class="m-img" src="'+esc(url)+'" alt="'+esc(m.label||"")+'" loading="lazy" data-full="'+esc(url)+'" onerror="window.__mediaImgErr&&window.__mediaImgErr(this)"/></div>';
     if(isVideoFile(url)) return '<div class="m-item">'+cap+'<video class="m-file" src="'+esc(url)+'" controls preload="metadata" playsinline></video></div>';
     if(isAudioFile(url)) return '<div class="m-item">'+cap+'<audio class="m-file" src="'+esc(url)+'" controls preload="none"></audio></div>';
     return '<div class="m-item">'+linkBtnHtml(url,m)+'</div>';
   }
-  // A Google Photos direct image (lh3.googleusercontent.com/…) works as an <img>; a shared *album* link does not embed.
+  // A Google Photos DIRECT image (lh3.googleusercontent.com/…) embeds as an <img>. A
+  // Google Photos SHARE link (photos.google.com/…, photos.app.goo.gl/…) does NOT — Google
+  // blocks hotlinking it — so those must be shown as a clickable "open" tile, not a broken img.
   function isGooglePhotoImg(u){ return /\.googleusercontent\.com\//i.test(u) || /usercontent\.google\.com\//i.test(u); }
+  function isEmbeddableImg(u){ return isImg(u)||isGooglePhotoImg(u); }   // has an image extension OR is a direct Google image
   function isKnownEmbed(u){ return !!(ytId(u)||vimeoId(u)||driveId(u)||spotifyEmbed(u)||/soundcloud\.com\//i.test(u)); }
-  // A real video/audio/embed link is never treated as a photo, whatever type the person picked in the editor.
+  // Only genuinely-embeddable images go in the photo gallery; a share link (or any other
+  // link the person tagged "image") falls through to a clickable tile so it's never invisible.
   function isImageMedia(m){ var u=normURL(m.url); if(!u) return false;
     if(isKnownEmbed(u)||isVideoFile(u)||isAudioFile(u)) return false;
-    return isImg(u)||isGooglePhotoImg(u)||m.kind==="image"; }
+    return isEmbeddableImg(u); }
   function galleryImgHtml(m){ var url=normURL(m.url);
-    return '<figure class="gal-item"><img class="m-img" src="'+esc(url)+'" alt="'+esc(m.label||"")+'" loading="lazy" data-full="'+esc(url)+'"/>'+
+    return '<figure class="gal-item"><img class="m-img" src="'+esc(url)+'" alt="'+esc(m.label||"")+'" loading="lazy" data-full="'+esc(url)+'" onerror="window.__mediaImgErr&&window.__mediaImgErr(this)"/>'+
       (m.label?'<figcaption>'+esc(m.label)+'</figcaption>':'')+'</figure>'; }
+  // If an image URL fails to load (e.g. a Google Photos share link), swap the broken img
+  // for a clickable "open" link so the media is still reachable rather than invisible.
+  window.__mediaImgErr=function(img){ try{ var u=img.getAttribute('data-full')||img.src||'';
+    var a=document.createElement('a'); a.href=u; a.target='_blank'; a.rel='noopener noreferrer'; a.className='p-mediabtn';
+    a.innerHTML='<span class="ml">'+((img.getAttribute('alt')||'').trim()||'Open photo')+'</span><span class="go">↗</span>';
+    img.replaceWith(a); }catch(e){ try{ img.style.display='none'; }catch(_){} } };
   function openLightbox(src){ var lb=$("lightbox"); if(!lb)return; lb.querySelector("img").src=src; lb.classList.add("open"); }
   function closeLightbox(){ var lb=$("lightbox"); if(!lb)return; lb.classList.remove("open"); lb.querySelector("img").src=""; }
 
   /* ===== Memories from WhatsApp (approved photo / voice / text shown on a person) ===== */
   var memByPerson = {};
+  // Per-viewer "seen" memory (localStorage): personId -> the media+memory count this
+  // browser has already opened. A card's media counter goes GREEN when the current
+  // total is higher than what this viewer last saw, and clears when they open the card —
+  // so it stays green independently for everyone who hasn't looked at the new item yet.
+  var seenMap=(function(){ try{ return JSON.parse(localStorage.getItem("kzseen_"+(treeId||"legacy"))||"{}")||{}; }catch(e){ return {}; } })();
+  function mediaTotal(p){ if(!p) return 0;
+    var links=(p.media||[]).filter(function(x){ return normURL(x.url); }).length;
+    var mems=(memByPerson[p.id]||[]).length;
+    return links+mems; }                       // photos, videos, audio links + approved memories
+  function seenCount(pid){ return seenMap[pid]||0; }
+  function markSeenMedia(pid){ var p=P(pid); if(!p) return; var t=mediaTotal(p);
+    if(seenMap[pid]!==t){ seenMap[pid]=t; try{ localStorage.setItem("kzseen_"+(treeId||"legacy"), JSON.stringify(seenMap)); }catch(e){} } }
   // Strip any raw  [mem:tree:person]  tag that an older captured memory may still carry,
   // so it never shows on a card (mirrors the server-side memtag.js).
   function stripMemTag(s){ return String(s||"").replace(/[\[［【〔]\s*mem\s*[:：：]\s*[A-Za-z0-9_-]+\s*[:：：]\s*[A-Za-z0-9_-]+\s*[\]］】〕]/gi," ").replace(/\s{2,}/g," ").trim(); }
@@ -846,6 +882,7 @@
           (map[m.personId]=map[m.personId]||[]).push(m);
         });
         memByPerson=map;
+        render();   // memory counts feed the card media counter — redraw so it (and green "new") updates
         // If a read profile is open, refresh it so the memory appears without a tap.
         if(selectedId && !editingId && drawer.classList.contains("open")) openProfile(selectedId);
       }).catch(function(){});
@@ -885,7 +922,7 @@
   }
 
   function openProfile(pid){
-    var p=P(pid); if(!p)return; selectedId=pid; editingId=null; $("drawerFoot").style.display="none";
+    var p=P(pid); if(!p)return; selectedId=pid; editingId=null; markSeenMedia(pid); $("drawerFoot").style.display="none";
     var nm=nameFor(p,lang), yr=yearsFor(p);
     $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
     var h='<div class="profile"><div class="p-photo'+(yr.dec?" dec":"")+'" id="prof_photo">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>';
@@ -894,6 +931,7 @@
     if(p.nick) h+='<div class="p-alt">"'+esc(p.nick)+'"</div>';
     var dp=[]; if(p.birth)dp.push(T("born")+" "+p.birth); if(p.death)dp.push(T("died")+" "+p.death);
     if(dp.length) h+='<div class="p-dates">'+(yr.dec?"† ":"")+esc(dp.join("   ·   "))+'</div>';
+    h+=memLeaveBtnHtml(pid);   // "Leave a memory" sits at the top of the card, under the name
     if(p.maiden) h+=pfield(T("maiden"),p.maiden);
     if(p.notes) h+=pfield(T("notes"),p.notes);
     if(p.source) h+=pfield(T("source"),p.source);
@@ -915,7 +953,6 @@
       h+='</div>';
     }
     h+=memSectionHtml(pid);
-    h+=memLeaveBtnHtml(pid);
     h+='</div>';
     drawerBody.innerHTML=h; drawerBody.scrollTop=0;
     var _pph=personPhoto(p); if(_pph){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+_pph+'")'; }
