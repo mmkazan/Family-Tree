@@ -108,25 +108,52 @@ export async function speak(text, voice, style) {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
   };
-  // The model occasionally returns 200 with a text part and NO audio (a transient miss that
-  // left names silently un-spoken). Try twice before giving up — the second try almost always
-  // comes back with audio.
-  let part;
-  for (let attempt = 0; attempt < 2 && !part; attempt++) {
-    const res = await geminiFetch(model, body, 2);   // geminiFetch itself retries 429 / 5xx
-    if (!res) return null;
+  // The preview TTS model is NONDETERMINISTIC. On any given request it may:
+  //   • fail 400 "Model tried to generate text, but it should only be used for TTS"
+  //   • return HTTP 200 with a text part and NO audio
+  //   • hit a transient 429 / 5xx
+  // All three clear on a retry (the model simply behaves next time), so we try a few times
+  // with backoff. This is what turns read-aloud from "hit and miss" into reliable. Note we
+  // deliberately handle the 400 here rather than in geminiFetch, because for normal
+  // (translation) calls a 400 is a real client error and must NOT be retried.
+  const url = `${ENDPOINT}/${encodeURIComponent(model)}:generateContent`;
+  const TRIES = 4;
+  for (let a = 0; a < TRIES; a++) {
+    let res;
     try {
-      const j = await res.json();
-      const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
-      part = parts.find((p) => p.inlineData && p.inlineData.data);
-    } catch { return null; }
-    if (!part && attempt === 0) await sleep(400);
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      if (a === TRIES - 1) { console.warn("[gemini tts] fetch:", e && e.message); return null; }
+      await sleep(500 * (a + 1)); continue;
+    }
+    if (res.ok) {
+      let part;
+      try {
+        const j = await res.json();
+        const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+        part = parts.find((p) => p.inlineData && p.inlineData.data);
+      } catch { part = null; }
+      if (part) {
+        const mime = part.inlineData.mimeType || "";
+        const rate = (/(?:rate=)(\d+)/.exec(mime) || [])[1];
+        const pcm = Buffer.from(part.inlineData.data, "base64");
+        return { wav: pcmToWav(pcm, rate ? parseInt(rate, 10) : 24000, 1, 16), mime: "audio/wav" };
+      }
+      // 200 but the model answered with text / no audio — retry.
+      if (a === TRIES - 1) { console.warn("[gemini tts] no audio part after retries"); return null; }
+      await sleep(500 * (a + 1)); continue;
+    }
+    const txt = await res.text().catch(() => "");
+    const textGen = res.status === 400 && /only be used for TTS|tried to generate text/i.test(txt);
+    const retryable = res.status === 429 || res.status >= 500 || textGen;
+    if (!retryable || a === TRIES - 1) { console.warn("[gemini tts]", res.status, txt.slice(0, 200)); return null; }
+    await sleep(600 * (a + 1));
   }
-  if (!part) return null;
-  const mime = part.inlineData.mimeType || "";
-  const rate = (/(?:rate=)(\d+)/.exec(mime) || [])[1];
-  const pcm = Buffer.from(part.inlineData.data, "base64");
-  return { wav: pcmToWav(pcm, rate ? parseInt(rate, 10) : 24000, 1, 16), mime: "audio/wav" };
+  return null;
 }
 
 // Pick a voice for a person's sex (m/f/other). Env-overridable so voices can be tuned
