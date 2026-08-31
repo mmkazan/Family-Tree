@@ -8,7 +8,7 @@ import { currentUser } from "../shared/session.js";
 import { tts as ttsStore } from "../shared/blobs.js";
 import { loadTree, roleFor } from "../shared/tenant.js";
 import { emailForUid, isEditorEmail } from "../shared/roles.js";
-import { speak } from "../shared/gemini.js";
+import { speak, voiceForSex } from "../shared/gemini.js";
 
 const MAX = 120;
 
@@ -17,6 +17,7 @@ export default async (req) => {
   const tree = url.searchParams.get("tree");
   const text = (url.searchParams.get("text") || "").trim();
   const lang = url.searchParams.get("lang") || "";
+  const sex = url.searchParams.get("sex") || "";
   const token = url.searchParams.get("k") || req.headers.get("x-tree-token") || "";
   if (!tree || !text) return new Response("bad request", { status: 400 });
   if (text.length > MAX) return new Response("too long", { status: 413 });
@@ -29,7 +30,7 @@ export default async (req) => {
   const role = roleFor(t, token, isOwner || isEditor);
   if (role === "none") return new Response("forbidden", { status: 403 });   // names are visible to anyone with tree access
 
-  const voice = process.env.GEMINI_TTS_VOICE || "Kore";
+  const voice = voiceForSex(sex);   // pronounce a person's name in a voice matching their gender
   const accent = lang === "en" ? ", in a British accent" : lang === "it" ? ", with Italian pronunciation" : lang === "el" ? ", in Greek" : "";
   const style = "Say this name clearly and slowly" + accent;
 

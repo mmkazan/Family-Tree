@@ -699,11 +699,11 @@
       '<input type="file" accept="image/*" id="ph_file" style="display:none" /></div>';
     var _sl=secondLangInfo();
     if(!isMono()){
-      html+='<div class="field"><label class="lblrow" for="f_el">'+esc(secondNameLabel())+
+      html+='<div class="field"><label class="lblrow" for="f_el">'+esc(secondNameLabel())+sayInputBtn("f_el", cfg().secondLang)+
         (canToNative()?'<button type="button" class="translit" data-to="el">'+TRANSLIT_ICON+esc(T("trFromEn"))+'</button>':'')+'</label>'+
         '<input id="f_el" class="el" dir="auto" value="'+esc(p.nameEl||"")+'" placeholder="'+esc(cfg().secondLang==="el"?T("placeholderEl"):_sl.native)+'" /></div>';
     }
-    html+='<div class="field"><label class="lblrow" for="f_en">'+esc(T("nameEn"))+
+    html+='<div class="field"><label class="lblrow" for="f_en">'+esc(T("nameEn"))+sayInputBtn("f_en","en")+
       (canToLatin()?'<button type="button" class="translit" data-to="en">'+TRANSLIT_ICON+esc(cfg().secondLang==="el"?T("trFromEl"):("from "+_sl.en))+'</button>':'')+'</label>'+
       '<input id="f_en" value="'+esc(p.nameEn||"")+'" placeholder="'+esc(T("placeholderEn"))+'" /></div>';
     html+='<div class="two">'+fieldRow(T("nick"),"f_nick",p.nick,"","",false)+
@@ -911,10 +911,23 @@
   }
   // URL to read a memory's translation aloud in language k (account mode; carries the viewer's token).
   function ttsUrl(memId,k){ if(!accountMode||!treeId||!memId) return ""; var u="/api/tts?tree="+encodeURIComponent(treeId)+"&mem="+encodeURIComponent(memId)+"&lang="+encodeURIComponent(k); if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
-  // "Say the name" — a 🔊 that pronounces a name aloud (Gemini TTS via /api/say).
-  function sayNameBtn(text,langCode){ if(!accountMode||!treeId||!text) return "";
-    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(langCode||""); if(shareToken)u+="&k="+encodeURIComponent(shareToken);
+  // "Say the name" — a 🔊 that pronounces a name aloud (Gemini TTS via /api/say),
+  // in a voice matching the person's gender.
+  function sayNameBtn(text,langCode,sex){ if(!accountMode||!treeId||!text) return "";
+    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(langCode||"")+"&sex="+encodeURIComponent(sex||""); if(shareToken)u+="&k="+encodeURIComponent(shareToken);
     return ' <button type="button" class="name-say" data-url="'+esc(u)+'" title="Hear this name" aria-label="Hear this name" onclick="window.__say&&window.__say(this)">'+SPEAK_SVG+'</button>'; }
+  // Editor version: reads the CURRENT value of a name input (+ the sex dropdown) at click time.
+  window.__sayInput=function(btn){ try{
+    var inp=document.getElementById(btn.getAttribute("data-input")); if(!inp) return;
+    var text=(inp.value||"").trim(); if(!text || !accountMode || !treeId) return;
+    var lang=btn.getAttribute("data-lang")||"";
+    var sx=(document.getElementById("f_sex")&&document.getElementById("f_sex").value)||"";
+    var u="/api/say?tree="+encodeURIComponent(treeId)+"&text="+encodeURIComponent(text)+"&lang="+encodeURIComponent(lang)+"&sex="+encodeURIComponent(sx);
+    if(shareToken)u+="&k="+encodeURIComponent(shareToken);
+    btn.setAttribute("data-url",u); if(window.__say)window.__say(btn);
+  }catch(e){} };
+  function sayInputBtn(inputId,langCode){ if(!accountMode||!treeId) return "";
+    return ' <button type="button" class="name-say sm" data-input="'+inputId+'" data-lang="'+langCode+'" title="Hear this name" aria-label="Hear this name" onclick="window.__sayInput&&window.__sayInput(this)">'+SPEAK_SVG+'</button>'; }
   // Bilingual transcript/translation (Gemini). Viewer's own language shows first &
   // prominent, the other beneath — each with a 🔊 read-aloud button.
   function memTrHtml(m){
@@ -964,8 +977,8 @@
     var nm=nameFor(p,lang), yr=yearsFor(p);
     $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
     var h='<div class="profile"><div class="p-photo'+(yr.dec?" dec":"")+'" id="prof_photo">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>';
-    h+='<div class="p-name">'+esc(nm.primary||nm.secondary||T("newPerson"))+sayNameBtn(nm.primary||nm.secondary, lang)+'</div>';
-    if(nm.primary&&nm.secondary) h+='<div class="p-alt">'+esc(nm.secondary)+sayNameBtn(nm.secondary, (lang==="el"?"en":"el"))+'</div>';
+    h+='<div class="p-name">'+esc(nm.primary||nm.secondary||T("newPerson"))+sayNameBtn(nm.primary||nm.secondary, lang, p.sex)+'</div>';
+    if(nm.primary&&nm.secondary) h+='<div class="p-alt">'+esc(nm.secondary)+sayNameBtn(nm.secondary, (lang==="el"?"en":"el"), p.sex)+'</div>';
     if(p.nick) h+='<div class="p-alt">"'+esc(p.nick)+'"</div>';
     var dp=[]; if(p.birth)dp.push(T("born")+" "+p.birth); if(p.death)dp.push(T("died")+" "+p.death);
     if(dp.length) h+='<div class="p-dates">'+(yr.dec?"† ":"")+esc(dp.join("   ·   "))+'</div>';

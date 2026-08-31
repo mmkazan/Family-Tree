@@ -108,7 +108,7 @@ export async function speak(text, voice, style) {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
     },
   };
-  const res = await geminiFetch(model, body);
+  const res = await geminiFetch(model, body, 2);   // fewer retries — a TTS 429 is quota, retrying just burns more
   if (!res) return null;
   let part;
   try {
