@@ -58,6 +58,26 @@
   .divider{border:none;border-top:1px solid var(--hair);margin:20px 0}
   .newtree{display:flex;gap:10px}.newtree input{flex:1}
   @media(max-width:460px){.newtree{flex-direction:column}}
+  .tree-block{border:1px solid var(--hair);border-left:4px solid var(--olive);border-radius:10px;background:var(--surface-2);overflow:hidden}
+  .tree-block .tree{border:none;border-radius:0;background:transparent;margin:0}
+  .tree-block .tree:hover{transform:none;box-shadow:none;border:none}
+  .role-badge{display:inline-block;margin-left:9px;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+    color:var(--accent-deep);background:var(--accent-soft);border-radius:20px;padding:2px 8px;vertical-align:middle}
+  .t-actions{display:flex;flex-wrap:wrap;gap:6px 16px;padding:2px 16px 13px}
+  .t-link{background:none;border:none;padding:0;font:inherit;font-size:.85rem;color:var(--accent-deep);font-weight:600;cursor:pointer;text-decoration:none}
+  .t-link:hover{text-decoration:underline}
+  .t-link.danger{color:var(--danger);margin-left:auto}
+  .editors-panel{padding:0 16px 16px;border-top:1px dashed var(--hair);margin:2px 0 0}
+  .ed-head{font-size:.78rem;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:13px 0 9px}
+  .ed-list{display:flex;flex-direction:column;gap:7px}
+  .ed-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--hair);border-radius:8px;padding:8px 11px;font-size:.95rem}
+  .ed-x{background:none;border:none;color:var(--muted);font:inherit;font-size:.82rem;cursor:pointer}
+  .ed-x:hover{color:var(--danger)}
+  .ed-none{font-size:.9rem;color:var(--muted);margin:0}
+  .ed-add{display:flex;gap:8px;margin-top:11px}.ed-add .ed-in{flex:1}
+  .ed-note{font-size:.8rem;color:var(--faint);margin:9px 0 0}
+  .ed-msg{font-size:.86rem;min-height:1em;margin:8px 0 0;color:var(--muted)}.ed-msg.good{color:var(--accent-deep)}.ed-msg.bad{color:var(--danger)}
+  @media(max-width:460px){.ed-add{flex-direction:column}}
   .foot{text-align:center;color:var(--faint);font-size:.8rem;margin-top:26px}
   .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--hair);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -152,29 +172,84 @@
     loadTrees();
   }
 
+  function treeRow(t){
+    var title=(t.title&&(t.title.en||t.title.el))||"Untitled tree";
+    var n=t.people||0; var id=esc(t.id); var isOwner=(t.role!=="editor");
+    var badge = isOwner ? '' : '<span class="role-badge">Editor</span>';
+    var open = isOwner ? 'Open →' : 'Open to edit →';
+    var actions =
+      '<div class="t-actions">'+
+        '<a class="t-link" href="/memories?tree='+id+'">💚 Review memories</a>'+
+        (isOwner ? '<button type="button" class="t-link t-manage" data-id="'+id+'">Manage access</button>' : '')+
+        (isOwner ? '<button type="button" class="t-link danger t-del" data-id="'+id+'" data-name="'+esc(title)+'">Delete</button>' : '')+
+      '</div>';
+    return '<div class="tree-block" data-id="'+id+'">'+
+      '<div class="tree-row">'+
+        '<a class="tree" href="/?id='+id+'">'+
+          '<span><span class="t-name">'+esc(title)+badge+'</span><span class="t-meta">'+n+' '+(n===1?'person':'people')+'</span></span>'+
+          '<span class="t-go">'+open+'</span></a>'+
+      '</div>'+actions+
+      '<div class="editors-panel" id="ed_'+id+'" hidden></div>'+
+    '</div>';
+  }
+
   function loadTrees(){
     api("/api/trees").then(function(r){return r.json();}).then(function(d){
       var box=document.getElementById("trees"); if(!box)return;
       var list=(d&&d.trees)||[];
       if(!list.length){ box.innerHTML='<div class="empty">No trees yet — start one below.</div>'; return; }
       box.className="trees";
-      box.innerHTML=list.map(function(t){
-        var title=(t.title&&(t.title.en||t.title.el))||"Untitled tree";
-        var n=t.people||0;
-        return '<div class="tree-row" style="display:flex;align-items:stretch;gap:8px">'+
-          '<a class="tree" style="flex:1;margin:0" href="/?id='+encodeURIComponent(t.id)+'">'+
-            '<span><span class="t-name">'+esc(title)+'</span><span class="t-meta">'+n+' '+(n===1?'person':'people')+'</span></span>'+
-            '<span class="t-go">Open →</span></a>'+
-          '<button type="button" class="t-del" data-id="'+esc(t.id)+'" data-name="'+esc(title)+'" aria-label="Delete tree" title="Delete this tree" '+
-            'style="border:1px solid var(--hair);background:var(--surface-2);color:var(--muted);border-radius:10px;padding:0 14px;font:inherit;font-size:.82rem;cursor:pointer;white-space:nowrap;transition:.15s">Delete</button>'+
-        '</div>';
-      }).join("");
+      box.innerHTML=list.map(treeRow).join("");
       Array.prototype.forEach.call(box.querySelectorAll(".t-del"),function(btn){
         btn.addEventListener("click",function(){ deleteTree(btn.getAttribute("data-id"), btn.getAttribute("data-name")); });
+      });
+      Array.prototype.forEach.call(box.querySelectorAll(".t-manage"),function(btn){
+        btn.addEventListener("click",function(){ toggleEditors(btn.getAttribute("data-id")); });
       });
     }).catch(function(){
       var box=document.getElementById("trees"); if(box) box.innerHTML='<div class="empty">Couldn’t load your trees — refresh to try again.</div>';
     });
+  }
+
+  /* ---------- manage who can edit a tree (owner only) ---------- */
+  function toggleEditors(id){
+    var panel=document.getElementById("ed_"+id); if(!panel)return;
+    if(!panel.hidden){ panel.hidden=true; return; }
+    panel.hidden=false;
+    panel.innerHTML='<p class="ed-msg"><span class="spin"></span> Loading…</p>';
+    api("/api/tree-doc?id="+encodeURIComponent(id),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({editors:"get"})})
+      .then(function(r){return r.json();}).then(function(j){ renderEditors(id,(j&&j.editors)||[]); })
+      .catch(function(){ panel.innerHTML='<p class="ed-msg bad">Couldn’t load — try again.</p>'; });
+  }
+  function renderEditors(id,emails){
+    var panel=document.getElementById("ed_"+id); if(!panel)return;
+    var rows = emails.length
+      ? emails.map(function(e){ return '<div class="ed-item"><span>'+esc(e)+'</span><button type="button" class="ed-x" data-email="'+esc(e)+'" title="Remove">Remove</button></div>'; }).join("")
+      : '<p class="ed-none">No editors yet. Add a family member’s email so they can add people and approve memories.</p>';
+    panel.innerHTML=
+      '<div class="ed-head">Editors — can add &amp; edit people, approve memories, and share view links</div>'+
+      '<div class="ed-list">'+rows+'</div>'+
+      '<div class="ed-add"><input type="email" class="ed-in" placeholder="family@example.com" autocomplete="off"><button type="button" class="btn ed-addbtn">Add editor</button></div>'+
+      '<p class="ed-note">They sign in at Elaia with this email (a one-tap link) to get access. Only you can change this list.</p>'+
+      '<p class="ed-msg" id="edmsg_'+esc(id)+'"></p>';
+    panel.__emails=emails.slice();
+    Array.prototype.forEach.call(panel.querySelectorAll(".ed-x"),function(b){
+      b.addEventListener("click",function(){ setEditors(id, panel.__emails.filter(function(x){return x!==b.getAttribute("data-email");})); });
+    });
+    var input=panel.querySelector(".ed-in");
+    function add(){ var v=(input.value||"").trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ msg(id,"That doesn’t look like an email.",true); return; }
+      if(panel.__emails.indexOf(v)>=0){ msg(id,"Already an editor.",false); input.value=""; return; }
+      setEditors(id, panel.__emails.concat([v])); }
+    panel.querySelector(".ed-addbtn").addEventListener("click",add);
+    input.addEventListener("keydown",function(e){ if(e.key==="Enter")add(); });
+  }
+  function msg(id,text,bad){ var m=document.getElementById("edmsg_"+id); if(m){ m.className="ed-msg"+(bad?" bad":" good"); m.textContent=text; } }
+  function setEditors(id,emails){
+    msg(id,"Saving…",false);
+    api("/api/tree-doc?id="+encodeURIComponent(id),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({editors:"set",emails:emails})})
+      .then(function(r){return r.json();}).then(function(j){ if(j&&j.editors){ renderEditors(id,j.editors); msg(id,"Saved.",false); } else { throw new Error(); } })
+      .catch(function(){ msg(id,"Couldn’t save — try again.",true); });
   }
 
   function deleteTree(id,name){

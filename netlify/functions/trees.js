@@ -2,7 +2,8 @@
 //   GET  -> list the signed-in account's trees (id, title, updated, people count)
 //   POST -> create a new empty tree owned by the account; returns { id }
 import { currentUser, newId } from "../shared/session.js";
-import { accounts, trees } from "../shared/blobs.js";
+import { accounts, trees, normEmail } from "../shared/blobs.js";
+import { editorTreeIds } from "../shared/roles.js";
 
 const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -14,11 +15,19 @@ export default async (req) => {
   if (!acct) return json({ error: "unauthorized" }, 401);
 
   if (req.method === "GET") {
-    const ids = acct.treeIds || [];
+    const ownIds = acct.treeIds || [];
+    const editIds = (await editorTreeIds(normEmail(acct.email))).filter((id) => !ownIds.includes(id));
     const list = [];
-    for (const id of ids) {
+    for (const id of ownIds) {
       const t = await trees().get(id, { type: "json" });
-      if (t) list.push({ id, title: t.title, updated: t.updated || t.updatedAt || 0, people: Object.keys(t.people || {}).length });
+      if (t) list.push({ id, title: t.title, updated: t.updated || t.updatedAt || 0, people: Object.keys(t.people || {}).length, role: "owner" });
+    }
+    for (const id of editIds) {
+      const t = await trees().get(id, { type: "json" });
+      // guard: only include if still actually an editor (index could be stale)
+      if (t && (t.editors || []).map(normEmail).includes(normEmail(acct.email))) {
+        list.push({ id, title: t.title, updated: t.updated || t.updatedAt || 0, people: Object.keys(t.people || {}).length, role: "editor" });
+      }
     }
     return json({ trees: list });
   }

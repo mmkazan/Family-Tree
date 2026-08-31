@@ -4,31 +4,40 @@
 //          approve: attaches a text memory to the person's notes (shows on the tree today);
 //                   voice/photo attachment to the tree card is the next step.
 import { currentUser } from "../shared/session.js";
-import { accounts, trees, memories } from "../shared/blobs.js";
+import { accounts, trees, memories, normEmail } from "../shared/blobs.js";
 import { stripMemTags } from "../shared/memtag.js";
+import { editorTreeIds, isEditorEmail } from "../shared/roles.js";
 
 const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+
+const titleOf = (t) => (t && t.title && (t.title.en || t.title.el)) || "Family tree";
 
 export default async (req) => {
   const sess = currentUser(req);
   if (!sess) return json({ error: "unauthorized" }, 401);
   const acct = await accounts().get(sess.uid, { type: "json" });
   if (!acct) return json({ error: "unauthorized" }, 401);
-  const treeIds = acct.treeIds || [];
+  const email = normEmail(acct.email);
+  const ownIds = acct.treeIds || [];
+  // Trees this account may moderate: the ones it owns + the ones it edits.
+  const editIds = (await editorTreeIds(email)).filter((id) => !ownIds.includes(id));
 
   if (req.method === "GET") {
     const out = [];
-    for (const tid of treeIds) {
+    for (const tid of ownIds.concat(editIds)) {
       const t = await trees().get(tid, { type: "json" });
       if (!t) continue;
+      const isOwner = t.ownerId === sess.uid;
+      if (!isOwner && !isEditorEmail(t, email)) continue;   // stale index guard
+      const role = isOwner ? "owner" : "editor";
       let listed; try { listed = await memories().list({ prefix: tid + "/" }); } catch { listed = { blobs: [] }; }
       for (const b of (listed.blobs || [])) {
         const rec = await memories().get(b.key, { type: "json" });
         if (!rec || rec.status === "rejected") continue;
         const p = (t.people || {})[rec.personId] || {};
         out.push({
-          id: rec.id, tree: tid, personId: rec.personId,
+          id: rec.id, tree: tid, treeTitle: titleOf(t), yourRole: role, personId: rec.personId,
           personName: (p.nameEn || p.nameEl || "Unknown"),
           from: rec.fromName || rec.from || "", text: stripMemTags(rec.text || ""),
           status: rec.status, ts: rec.ts,
@@ -46,9 +55,11 @@ export default async (req) => {
   if (req.method === "POST") {
     let body = {}; try { body = await req.json(); } catch {}
     const { mem, tree, action } = body || {};
-    if (!mem || !tree || !treeIds.includes(tree)) return json({ error: "bad_request" }, 400);
+    const mayModerate = tree && (ownIds.includes(tree) || editIds.includes(tree));
+    if (!mem || !tree || !mayModerate) return json({ error: "bad_request" }, 400);
     const t = await trees().get(tree, { type: "json" });
-    if (!t || t.ownerId !== sess.uid) return json({ error: "forbidden" }, 403);
+    if (!t) return json({ error: "not_found" }, 404);
+    if (t.ownerId !== sess.uid && !isEditorEmail(t, email)) return json({ error: "forbidden" }, 403);
     const rec = await memories().get(`${tree}/${mem}`, { type: "json" });
     if (!rec) return json({ error: "not_found" }, 404);
 

@@ -3,7 +3,9 @@
 // the account. The GDPR "delete my data" control. Triggered by the owner in the
 // UI with an explicit confirmation.
 import { currentUser } from "../shared/session.js";
-import { accounts, trees, snapshots } from "../shared/blobs.js";
+import { accounts, trees, snapshots, memories, memoryMedia } from "../shared/blobs.js";
+import { purgeTreeFromEditors } from "../shared/roles.js";
+import { deleteTreeMedia } from "../shared/storage.js";
 
 const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -30,6 +32,24 @@ export default async (req) => {
   } catch (e) {
     console.warn("[tree-delete] snapshot cleanup:", e && e.message);
   }
+
+  // remove this tree's memories and their media (GDPR: leave nothing orphaned)
+  try {
+    const { blobs } = await memories().list({ prefix: id + "/" });
+    for (const b of (blobs || [])) {
+      const rec = await memories().get(b.key, { type: "json" });
+      for (let i = 0; i < ((rec && rec.media) || []).length; i++) {
+        try { await memoryMedia().delete(`${rec.id}/${i}`); } catch {}
+      }
+      await memories().delete(b.key);
+    }
+  } catch (e) {
+    console.warn("[tree-delete] memory cleanup:", e && e.message);
+  }
+
+  // drop this tree's stored photos, and remove it from every editor's reverse index
+  try { await deleteTreeMedia(id); } catch (e) { console.warn("[tree-delete] media cleanup:", e && e.message); }
+  try { await purgeTreeFromEditors(doc); } catch (e) { console.warn("[tree-delete] editor cleanup:", e && e.message); }
 
   await trees().delete(id);
 

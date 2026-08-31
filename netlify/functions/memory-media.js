@@ -7,6 +7,7 @@
 import { currentUser } from "../shared/session.js";
 import { memories, memoryMedia } from "../shared/blobs.js";
 import { loadTree, roleFor, memVisibleToRole } from "../shared/tenant.js";
+import { emailForUid, isEditorEmail } from "../shared/roles.js";
 
 export default async (req) => {
   const url = new URL(req.url);
@@ -20,14 +21,16 @@ export default async (req) => {
   if (!t) return new Response("not found", { status: 404 });
   const sess = currentUser(req);
   const isOwner = !!(sess && sess.uid === t.ownerId);
-  const role = roleFor(t, token, isOwner);
+  const isEditor = !isOwner && sess ? isEditorEmail(t, await emailForUid(sess.uid)) : false;
+  const isModerator = isOwner || isEditor;   // owner + editors review pending media
+  const role = roleFor(t, token, isModerator);
   if (role === "none") return new Response("forbidden", { status: 403 });
 
   const rec = await memories().get(`${tree}/${mem}`, { type: "json" });
   if (!rec) return new Response("not found", { status: 404 });
 
-  // Non-owners: only approved memories, and only where privacy allows.
-  if (!isOwner) {
+  // Anyone who isn't a moderator: only approved memories, and only where privacy allows.
+  if (!isModerator) {
     if (rec.status !== "approved") return new Response("forbidden", { status: 403 });
     const s = t.share || null;
     const hideLiving = !s || s.hideLiving !== false;

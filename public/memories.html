@@ -31,6 +31,12 @@
   .btn.ghost:hover{border-color:var(--danger);color:var(--danger)}
   .pill{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-left:auto}
   .pill.ok{color:var(--olive)}
+  .grp-head{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--hair)}
+  .grp-head:first-child{margin-top:0}
+  .grp-name{font-size:1.35rem}
+  .grp-role{font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--accent-deep);background:var(--surface-2);border:1px solid var(--hair);border-radius:20px;padding:2px 8px}
+  .grp-count{margin-left:auto;font-size:.8rem;color:var(--gold);font-weight:700}
+  .grp-count.done{color:var(--olive)}
   .empty{text-align:center;color:var(--muted);padding:30px 8px;border:1px dashed var(--faint);border-radius:10px}
   .msg{min-height:1.2em;color:var(--muted);font-size:.9rem;text-align:center}
   .foot{text-align:center;color:var(--faint);font-size:.8rem;margin-top:26px}
@@ -43,7 +49,7 @@
 <div class="wrap">
   <header class="top">
     <div class="name serif">Memories</div>
-    <p class="tagline">Voice notes, photos and messages the family sent in. Approve the ones to keep on the tree.</p>
+    <p class="tagline">Voice notes, photos and messages the family sent in. Keep the ones to show on the tree — you and the tree’s editors can approve.</p>
   </header>
   <div id="view"><div class="msg"><span class="spin"></span> Loading…</div></div>
   <p class="foot"><a href="/my">← back to your trees</a></p>
@@ -58,11 +64,29 @@
 
   api("/api/me").then(function(r){ if(r.status!==200){ location.href="/my"; return null; } return load(); });
 
+  function param(n){ try{ return new URLSearchParams(location.search).get(n)||""; }catch(e){ return ""; } }
+  var onlyTree=param("tree");
+
   function load(){
     return api("/api/memories").then(function(r){return r.json();}).then(function(d){
       var list=(d&&d.memories)||[];
-      if(!list.length){ view.innerHTML='<div class="empty">No memories yet. When family send a voice note, photo or message to the WhatsApp number, they’ll appear here to review.</div>'; return; }
-      view.innerHTML=list.map(card).join("");
+      if(onlyTree) list=list.filter(function(m){ return m.tree===onlyTree; });
+      if(!list.length){ view.innerHTML='<div class="empty">No memories to review yet. When family send a voice note, photo or message to the WhatsApp number for someone on the tree, they’ll appear here.</div>'; return; }
+      // group by tree, pending first within each
+      var groups={}, order=[];
+      list.forEach(function(m){ if(!groups[m.tree]){ groups[m.tree]=[]; order.push(m.tree); } groups[m.tree].push(m); });
+      var html=order.map(function(tid){
+        var items=groups[tid].slice().sort(function(a,b){ return (a.status==="approved")-(b.status==="approved") || b.ts-a.ts; });
+        var t0=items[0]||{};
+        var pending=items.filter(function(m){return m.status!=="approved";}).length;
+        var head = (order.length>1 || onlyTree)
+          ? '<div class="grp-head"><span class="grp-name serif">'+esc(t0.treeTitle||"Family tree")+'</span>'+
+            (t0.yourRole==="editor"?'<span class="grp-role">you’re an editor</span>':'')+
+            (pending?'<span class="grp-count">'+pending+' to review</span>':'<span class="grp-count done">all reviewed</span>')+'</div>'
+          : '';
+        return head + items.map(card).join("");
+      }).join("");
+      view.innerHTML=html;
       view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b.getAttribute("data-tree"),b.getAttribute("data-mem"),b.getAttribute("data-act")); }); });
     }).catch(function(){ view.innerHTML='<div class="empty">Couldn’t load — refresh to try again.</div>'; });
   }

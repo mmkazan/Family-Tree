@@ -9,6 +9,7 @@ export const magic = () => getStore("magic-links");        // token -> { email, 
 export const trees = () => getStore("trees");              // treeId -> tree doc
 export const shares = () => getStore("shares");            // shareToken -> { treeId, lang, hideLiving, revoked }
 export const snapshots = () => getStore("snapshots");      // `${treeId}/${iso}` -> tree doc
+export const editorIndex = () => getStore("editor-index"); // normalised email -> [treeId] (trees this account can edit)
 
 // WhatsApp "leave a memory" pipeline (Twilio inbound):
 export const memories = () => getStore("memories");        // `${treeId}/${memId}` -> { id,treeId,personId,from,fromName,text,media:[{key,type}],ts,status }

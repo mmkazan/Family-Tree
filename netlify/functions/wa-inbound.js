@@ -13,6 +13,7 @@ import { newId } from "../shared/session.js";
 import { parseMemTag, stripMemTags } from "../shared/memtag.js";
 
 const CONTEXT_TTL = 6 * 60 * 60 * 1000; // remember "who is this for" for 6h per sender
+const MAX_MEDIA_BYTES = 16 * 1024 * 1024; // skip a single attachment larger than 16MB
 
 function twiml(msg) {
   const body = msg ? `<Message>${msg.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}</Message>` : "";
@@ -101,6 +102,7 @@ export default async (req) => {
         const r = await fetch(mUrl, { headers: { Authorization: auth } });
         if (!r.ok) continue;
         const buf = await r.arrayBuffer();
+        if (buf.byteLength > MAX_MEDIA_BYTES) continue;   // don't store an oversized attachment
         const ctype = params["MediaContentType" + i] || r.headers.get("content-type") || "application/octet-stream";
         const key = `${memId}/${i}`;
         await memoryMedia().set(key, buf, { metadata: { contentType: ctype } });

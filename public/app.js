@@ -46,6 +46,7 @@
       setMono:"One language (English only)", setMonoSub:"A single name per person. Hides the second-language field and the language switch.",
       setSecond:"Second language", setSaved:"Display settings updated.",
       shareTitle:"Share this tree", shareLede:"Send a link to family. A view link is read-only; an edit link lets them add and change people.",
+      shareLedeEditor:"Send family a view-only link. They can read the tree and leave memories; only the owner can hand out edit access.",
       shViewLbl:"View link (read-only)", shEditLbl:"Edit link (can add & change)", copy:"Copy", copied:"Copied", shareDone:"Done",
       shPriv:"Require a link to view (private)", shPrivSub:"When on, nobody can open the tree without a link — even with the address.",
       shRotate:"Reset links", shRotateConfirm:"Reset both links? Anyone using the old links will lose access.", shareNeedSave:"Unlock to edit first.", linkCopied:"Link copied.", shLangLbl:"Each link opens in:", shProtect:"Protect living people — hide their dates, places & photos on view-only links",
@@ -112,6 +113,7 @@
       setMono:"Μία γλώσσα (μόνο Αγγλικά)", setMonoSub:"Ένα όνομα ανά άτομο. Κρύβει το πεδίο δεύτερης γλώσσας και τον διακόπτη.",
       setSecond:"Δεύτερη γλώσσα", setSaved:"Οι ρυθμίσεις ενημερώθηκαν.",
       shareTitle:"Κοινή χρήση δέντρου", shareLede:"Στείλτε σύνδεσμο στην οικογένεια. Ο σύνδεσμος προβολής είναι μόνο για ανάγνωση· ο σύνδεσμος επεξεργασίας επιτρέπει αλλαγές.",
+      shareLedeEditor:"Στείλτε στην οικογένεια σύνδεσμο μόνο για προβολή. Μπορούν να δουν το δέντρο και να αφήσουν αναμνήσεις· μόνο ο ιδιοκτήτης δίνει πρόσβαση επεξεργασίας.",
       shViewLbl:"Σύνδεσμος προβολής (ανάγνωση)", shEditLbl:"Σύνδεσμος επεξεργασίας", copy:"Αντιγραφή", copied:"Αντιγράφηκε", shareDone:"Τέλος",
       shPriv:"Απαιτείται σύνδεσμος για προβολή (ιδιωτικό)", shPrivSub:"Όταν είναι ενεργό, κανείς δεν μπορεί να ανοίξει το δέντρο χωρίς σύνδεσμο.",
       shRotate:"Επαναφορά συνδέσμων", shRotateConfirm:"Επαναφορά συνδέσμων; Όσοι χρησιμοποιούν τους παλιούς θα χάσουν πρόσβαση.", shareNeedSave:"Ξεκλειδώστε πρώτα.", linkCopied:"Ο σύνδεσμος αντιγράφηκε.", shLangLbl:"Κάθε σύνδεσμος ανοίγει στα:", shProtect:"Προστασία ζώντων — απόκρυψη ημερομηνιών, τόπων & φωτογραφιών στους συνδέσμους προβολής",
@@ -167,6 +169,7 @@
   var lang = "en", selectedId = null, editingId = null, editMode = false;
   var passcode = "";
   var shareToken = "", shareRole = "none", shareEditToken = "", tokenFromUrl = false;
+  var acctOwner = false, acctEditor = false;   // account-mode role of the signed-in user
   var tx = {x:60,y:40,k:1};
   var hiddenTypes = {};
 
@@ -243,6 +246,22 @@
     return {primary:(a||"").trim(), secondary:(b||"").trim()};
   }
   function initialOf(p){ var nm=nameFor(p,lang); var s=(nm.primary||nm.secondary||"").trim(); return s?s.charAt(0).toUpperCase():"•"; }
+  // Resolve a person's photo to a URL. New photos are stored OUT of the tree doc
+  // (p.photoKey → /api/tree-media); legacy/external photos still live in p.photo.
+  // The frontend never knows the storage backend — swapping to a CDN later is a
+  // server-side change to storage.mediaUrl(), not here.
+  function personPhoto(p){ if(!p) return "";
+    if(p.photoKey && accountMode && treeId){ var u="/api/tree-media?tree="+encodeURIComponent(treeId)+"&key="+encodeURIComponent(p.photoKey); if(shareToken)u+="&k="+encodeURIComponent(shareToken); return u; }
+    return p.photo||""; }
+  // Upload a photo (data URL) to media storage; cb(key) with the stored key, or cb(null)
+  // on any failure so the caller can fall back to the inline photo. Account mode only.
+  function uploadPhoto(pid, dataUrl, cb){
+    var payload={tree:treeId, personId:pid, dataUrl:dataUrl};
+    if(shareEditToken) payload.editToken=shareEditToken;
+    fetch("/api/tree-media",{method:"POST",credentials:"include",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ cb(j&&j.key?j.key:null); })
+      .catch(function(){ cb(null); }); }
   function yearsFor(p){ var b=(p.birth||"").trim(), d=(p.death||"").trim(); if(!b&&!d) return {txt:"",dec:false}; return {txt:b+"–"+d, dec:!!d}; }
 
   function downscale(file, cb){
@@ -433,7 +452,7 @@
     var primaryHtml = nm.primary?'<div class="nm primary">'+esc(nm.primary)+'</div>':(nm.secondary?'<div class="nm primary empty">'+esc(nm.secondary)+'</div>':'<div class="nm primary empty">'+esc(T("newPerson"))+'</div>');
     var secondaryHtml=(nm.primary&&nm.secondary)?'<div class="nm secondary">'+esc(nm.secondary)+'</div>':'';
     var status=(!yr.dec&&p.birth)?'<span class="status live"></span>':'';
-    var header='<div class="chead"><div class="avatar'+(yr.dec?' dec':'')+'">'+(p.photo?"":esc(initialOf(p)))+'</div><div class="cmeta">'+primaryHtml+secondaryHtml+'</div></div>';
+    var header='<div class="chead"><div class="avatar'+(yr.dec?' dec':'')+'">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div><div class="cmeta">'+primaryHtml+secondaryHtml+'</div></div>';
     var media=p.media||[]; var na=media.filter(function(m){return m.kind==="audio";}).length, nv=media.filter(function(m){return m.kind==="video";}).length;
     var np=(p.places||[]).filter(function(x){return isNum(x.lat)&&isNum(x.lng);}).length+((isNum(p.placeLat)&&isNum(p.placeLng))?1:0);
     var chips=[]; if(na)chips.push('<span class="chip">'+ICON.audio+na+'</span>'); if(nv)chips.push('<span class="chip">'+ICON.video+nv+'</span>'); if(np)chips.push('<span class="chip pin" style="background:var(--brass)">'+pinSvg()+np+'</span>');
@@ -441,7 +460,7 @@
     var yrsHtml=yr.txt?'<div class="yrs">'+(yr.dec?'<span class="dag">†</span>':'')+'<span>'+esc(yr.txt)+'</span></div>':'<div class="yrs"></div>';
     var foot=(yr.txt||chips.length)?'<div class="cfoot">'+yrsHtml+chipsHtml+'</div>':'';
     card.innerHTML=status+header+foot;
-    if(p.photo){ var av=card.querySelector(".avatar"); if(av)av.style.backgroundImage='url("'+p.photo+'")'; }
+    var _cph=personPhoto(p); if(_cph){ var av=card.querySelector(".avatar"); if(av)av.style.backgroundImage='url("'+_cph+'")'; }
     if(editMode){ var h=document.createElement("div"); h.className="link-handle"; h.setAttribute("data-id",p.id); h.title=T("linkTip"); card.appendChild(h); }
     return card;
   }
@@ -660,9 +679,9 @@
     editingId=pid; selectedId=pid; $("drawerFoot").style.display="";
     var nm=nameFor(p,lang); $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
     var html="";
-    html+='<div class="photo-edit"><div class="photo-thumb" id="ph_thumb">'+(p.photo?"":esc(initialOf(p)))+'</div>'+
+    html+='<div class="photo-edit"><div class="photo-thumb" id="ph_thumb">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>'+
       '<div class="photo-actions"><button type="button" class="mini" id="ph_pick">'+esc(T("addPhoto"))+'</button>'+
-      '<button type="button" class="mini ghost" id="ph_rm" '+(p.photo?"":'style="display:none"')+'>'+esc(T("removePhoto"))+'</button></div>'+
+      '<button type="button" class="mini ghost" id="ph_rm" '+(personPhoto(p)?"":'style="display:none"')+'>'+esc(T("removePhoto"))+'</button></div>'+
       '<input type="file" accept="image/*" id="ph_file" style="display:none" /></div>';
     var _sl=secondLangInfo();
     if(!isMono()){
@@ -703,12 +722,20 @@
     drawerBody.innerHTML=html; drawerBody.scrollTop=0;
     renderMediaRows(p.media||[]); renderPlaceRows(p.places||[]); renderGuardians(p.guardians||[]); renderFamNow(pid);
     $("guardAdd").addEventListener("click",function(){ var sel=$("guardSel"); if(!sel.value)return; var l=currentGuardianList(); if(l.indexOf(sel.value)<0)l.push(sel.value); renderGuardians(l); });
-    if(p.photo) $("ph_thumb").style.backgroundImage='url("'+p.photo+'")';
+    var _tph=personPhoto(p); if(_tph) $("ph_thumb").style.backgroundImage='url("'+_tph+'")';
 
     $("ph_pick").addEventListener("click",function(){ $("ph_file").click(); });
     $("ph_file").addEventListener("change",function(e){ var f=e.target.files&&e.target.files[0]; if(!f)return;
-      downscale(f,function(d){ if(!d){toast(T("photoErr"));return;} P(editingId).photo=d; var th=$("ph_thumb"); th.textContent=""; th.style.backgroundImage='url("'+d+'")'; $("ph_rm").style.display=""; }); });
-    $("ph_rm").addEventListener("click",function(){ P(editingId).photo=""; var th=$("ph_thumb"); th.style.backgroundImage=""; th.textContent=initialOf(P(editingId)); this.style.display="none"; });
+      downscale(f,function(d){ if(!d){toast(T("photoErr"));return;}
+        var pid=editingId, pp=P(pid); if(!pp)return;
+        // Show + keep inline immediately (works even if the upload is slow or fails),
+        pp.photo=d; pp.photoKey="";
+        var th=$("ph_thumb"); th.textContent=""; th.style.backgroundImage='url("'+d+'")'; $("ph_rm").style.display="";
+        // then in account mode move the bytes OUT of the tree doc into media storage.
+        if(accountMode && treeId){ uploadPhoto(pid, d, function(key){ var q=P(pid); if(!q)return;
+          if(key){ q.photoKey=key; q.photo=""; scheduleSave(); } }); }   // on failure: inline stays
+      }); });
+    $("ph_rm").addEventListener("click",function(){ var q=P(editingId); if(q){ q.photo=""; q.photoKey=""; } var th=$("ph_thumb"); th.style.backgroundImage=""; th.textContent=initialOf(P(editingId)); this.style.display="none"; });
     $("addMedia").addEventListener("click",function(){ var snap=readMediaRows(true); snap.push({kind:"video",label:"",url:""}); renderMediaRows(snap);
       var rows=$("mediaRows").querySelectorAll(".media-row"); var last=rows[rows.length-1]; if(last)last.querySelector(".m-url").focus(); });
     $("addPlace").addEventListener("click",function(){ var snap=readPlaceRows(true); snap.push({type:"lived",label:"",year:""}); renderPlaceRows(snap);
@@ -861,7 +888,7 @@
     var p=P(pid); if(!p)return; selectedId=pid; editingId=null; $("drawerFoot").style.display="none";
     var nm=nameFor(p,lang), yr=yearsFor(p);
     $("drawerTitle").textContent=nm.primary||nm.secondary||T("newPerson");
-    var h='<div class="profile"><div class="p-photo'+(yr.dec?" dec":"")+'" id="prof_photo">'+(p.photo?"":esc(initialOf(p)))+'</div>';
+    var h='<div class="profile"><div class="p-photo'+(yr.dec?" dec":"")+'" id="prof_photo">'+(personPhoto(p)?"":esc(initialOf(p)))+'</div>';
     h+='<div class="p-name">'+esc(nm.primary||nm.secondary||T("newPerson"))+'</div>';
     if(nm.primary&&nm.secondary) h+='<div class="p-alt">'+esc(nm.secondary)+'</div>';
     if(p.nick) h+='<div class="p-alt">"'+esc(p.nick)+'"</div>';
@@ -891,13 +918,18 @@
     h+=memLeaveBtnHtml(pid);
     h+='</div>';
     drawerBody.innerHTML=h; drawerBody.scrollTop=0;
-    if(p.photo){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+p.photo+'")'; }
+    var _pph=personPhoto(p); if(_pph){ var pp=$("prof_photo"); if(pp)pp.style.backgroundImage='url("'+_pph+'")'; }
     drawer.classList.add("open"); scrim.classList.add("open"); drawer.setAttribute("aria-hidden","false"); render();
   }
   function openPerson(pid){ if(moveArmedId){ moveArmedId=null; setMoveHint(false); } if(editMode) openEditor(pid,false); else openProfile(pid); }
 
   /* ================= Save (API) ================= */
   var saveTimer=null, saving=false, pendingAgain=false;
+  // IDs of people as they were in the last server copy we loaded/saved. Used to tell
+  // the server which people we DELETED (vs. ones another editor added), so its
+  // concurrency-safe merge never drops someone else's just-added person.
+  var savedIds={};
+  function markSaved(ids){ savedIds={}; (ids||Object.keys(state.people)).forEach(function(id){ savedIds[id]=1; }); }
   function setSaveInd(cls,txt){ var el=$("saveInd"); el.className="save-ind"+(cls?" "+cls:""); $("saveTxt").textContent=txt||""; }
   function scheduleSave(now){ if(saveTimer){clearTimeout(saveTimer);saveTimer=null;} if(now)doSave(); else saveTimer=setTimeout(doSave,1000); }
   // Last-write-wins save: we NEVER overwrite the on-screen tree with the server's
@@ -909,12 +941,14 @@
     if(!editMode||!auth) return;
     if(saving){ pendingAgain=true; return; }
     saving=true; setSaveInd("saving",T("saving"));
-    var body={data:{title:state.title,people:state.people,config:state.config}};
+    var curIds={}; Object.keys(state.people).forEach(function(id){ curIds[id]=1; });
+    var deletedIds=Object.keys(savedIds).filter(function(id){ return !curIds[id]; });
+    var body={data:{title:state.title,people:state.people,config:state.config},deletedIds:deletedIds};
     if(auth.passcode)body.passcode=auth.passcode; if(auth.editToken)body.editToken=auth.editToken;
     fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
     .then(function(r){ return r.json().then(function(j){return {status:r.status,j:j};}).catch(function(){return {status:r.status,j:{}};}); })
     .then(function(res){ saving=false;
-      if(res.status===200&&res.j.ok){ state.version=res.j.version; setSaveInd("saved",T("saved")); if(pendingAgain){pendingAgain=false;doSave();} return; }
+      if(res.status===200&&res.j.ok){ state.version=res.j.version; markSaved(Object.keys(curIds)); setSaveInd("saved",T("saved")); if(pendingAgain){pendingAgain=false;doSave();} return; }
       if(res.status===401){ // credential no longer valid
         if(accountMode){ setEditMode(false); setSaveInd("",""); return; }
         if(passcode){ passcode=""; try{localStorage.removeItem("kz_pass");}catch(e){} setEditMode(false); openPasscode(); }
@@ -1699,22 +1733,29 @@
   function shareApi(action, extra){ var body={share:action}; if(!accountMode)body.passcode=passcode; if(extra)for(var k in extra)body[k]=extra[k];
     return fetch(treeEndpoint(),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}); }
   function fillShare(j){ if(!j)return; var mono=isMono();
-    $("urlViewEn").value=buildLink(j.viewToken, mono?"":"en");
-    $("urlEditEn").value=buildLink(j.editToken, mono?"":"en");
-    if($("urlViewEl"))$("urlViewEl").value=buildLink(j.viewToken,"el");
-    if($("urlEditEl"))$("urlEditEl").value=buildLink(j.editToken,"el");
+    if(j.viewToken){ $("urlViewEn").value=buildLink(j.viewToken, mono?"":"en"); if($("urlViewEl"))$("urlViewEl").value=buildLink(j.viewToken,"el"); }
+    if(j.editToken){ $("urlEditEn").value=buildLink(j.editToken, mono?"":"en"); if($("urlEditEl"))$("urlEditEl").value=buildLink(j.editToken,"el"); }
     if($("shProtect")&&typeof j.hideLiving==="boolean")$("shProtect").checked=j.hideLiving;
     $("shareMsg").textContent=""; }
+  // Owner (or legacy-passcode owner) can manage everything; an editor account can
+  // only hand out VIEW links — no edit links, no reset, no living-privacy toggle.
+  function shareCanManage(){ return accountMode ? acctOwner : !!passcode; }
   function openShare(){
     if(!passcode && !accountMode){ toast(T("shareNeedSave")); openPasscode(); return; }
-    $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=T("shareLede");
+    var canManage=shareCanManage();
+    $("shareTitle").textContent=T("shareTitle"); $("shareLede").textContent=canManage?T("shareLede"):T("shareLedeEditor");
     $("shRotate").textContent=T("shRotate"); $("shareDone").textContent=T("shareDone");
     var mono=isMono(), enName="English", elName=secondLangInfo().native;
     $("lblViewEn").textContent=T("shViewLbl")+(mono?"":" · "+enName);
     $("lblEditEn").textContent=T("shEditLbl")+(mono?"":" · "+enName);
     if($("lblViewEl"))$("lblViewEl").textContent=T("shViewLbl")+" · "+elName;
     if($("lblEditEl"))$("lblEditEl").textContent=T("shEditLbl")+" · "+elName;
-    $("rowViewEl").style.display=mono?"none":""; $("rowEditEl").style.display=mono?"none":"";
+    $("rowViewEl").style.display=mono?"none":"";
+    // Editor: hide edit links, the reset-links button and the protect-living toggle.
+    $("rowEditEn").style.display=canManage?"":"none";
+    $("rowEditEl").style.display=(canManage&&!mono)?"":"none";
+    $("shRotate").style.display=canManage?"":"none";
+    var _pl=$("shProtect"); if(_pl&&_pl.closest){ var _lab=_pl.closest(".so-check"); if(_lab)_lab.style.display=canManage?"":"none"; }
     if($("shProtectLbl"))$("shProtectLbl").textContent=T("shProtect");
     Array.prototype.forEach.call(document.querySelectorAll("#shareModal [data-copy]"),function(b){ b.textContent=T("copy"); });
     $("urlViewEn").value=""; $("urlEditEn").value=""; if($("urlViewEl"))$("urlViewEl").value=""; if($("urlEditEl"))$("urlEditEl").value=""; $("shareMsg").textContent="…";
@@ -1792,7 +1833,7 @@
   /* ================= Boot ================= */
   function applyServer(d){ if(!d)return; state.title=d.title||state.title; state.people=(d.people&&typeof d.people==="object")?d.people:{};
     state.config=(d.config&&typeof d.config==="object")?d.config:(state.config||{secondLang:"el",mono:false}); cfg();
-    state.version=d.version||0; normalizePeople(); if(isMono())lang="en"; }
+    state.version=d.version||0; normalizePeople(); markSaved(); if(isMono())lang="en"; }
   paintChrome(); setEditMode(!!passcode); render(); applyTransform();
   if(!sessionStorage.getItem("kz_ui")) setTimeout(fit,40);
 
@@ -1814,6 +1855,7 @@
       if(d && d.people!==undefined){
         applyServer(d);
         shareRole = d.role || "none";
+        acctOwner = !!d.owner; acctEditor = !!d.editor;
         if(shareRole==="edit" && shareToken && !passcode){ shareEditToken=shareToken; setEditMode(true); }
         else if(accountMode && shareRole==="edit"){ setEditMode(true); }
         paintChrome(); render(); if(!sessionStorage.getItem("kz_ui"))fit();
