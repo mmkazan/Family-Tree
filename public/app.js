@@ -900,6 +900,19 @@
     if(/^image\//.test(t)) return '<img class="m-img" src="'+u+'" alt="memory" loading="lazy" data-full="'+u+'"/>';
     return '<a class="p-mediabtn" href="'+u+'" target="_blank" rel="noopener noreferrer"><span class="ml">Attachment</span><span class="go">↗</span></a>';
   }
+  // Bilingual transcript/translation (Gemini). Viewer's own language shows first &
+  // prominent, the other beneath — so yiayia's Greek and its English sit together.
+  function memTrHtml(tr){
+    if(!tr || !tr.texts) return "";
+    var order = (lang==="el") ? ["el","en"] : ["en","el"];
+    Object.keys(tr.texts).forEach(function(k){ if(order.indexOf(k)<0) order.push(k); });
+    var h="", shown=0;
+    order.forEach(function(k){ var t=(tr.texts[k]||"").trim(); if(!t) return;
+      h+='<div class="mem-tr '+(shown===0?"primary":"alt")+'"><span class="mem-lang">'+esc((k||"").toUpperCase())+'</span>“'+esc(t)+'”</div>';
+      shown++;
+    });
+    return h;
+  }
   function memSectionHtml(pid){
     var mems=memByPerson[pid]; if(!mems||!mems.length) return "";
     var lbl = (lang==="el") ? "Αναμνήσεις" : "Memories";
@@ -908,7 +921,8 @@
       var txt=stripMemTag(m.text);
       h+='<div class="mem-card">';
       if(m.from) h+='<div class="mem-from">'+esc(m.from)+'</div>';
-      if(txt) h+='<div class="mem-text">“'+esc(txt)+'”</div>';
+      if(m.tr && m.tr.texts) h+=memTrHtml(m.tr);          // bilingual (both the family's languages)
+      else if(txt) h+='<div class="mem-text">“'+esc(txt)+'”</div>';   // fallback: raw caption
       (m.media||[]).forEach(function(mm){ h+='<div class="mem-med">'+memMediaHtml(mm)+'</div>'; });
       h+='</div>';
     });

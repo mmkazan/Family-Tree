@@ -4,14 +4,42 @@
 //          approve: attaches a text memory to the person's notes (shows on the tree today);
 //                   voice/photo attachment to the tree card is the next step.
 import { currentUser } from "../shared/session.js";
-import { accounts, trees, memories, normEmail } from "../shared/blobs.js";
+import { accounts, trees, memories, memoryMedia, normEmail } from "../shared/blobs.js";
 import { stripMemTags } from "../shared/memtag.js";
 import { editorTreeIds, isEditorEmail } from "../shared/roles.js";
+import { memoryBilingual, geminiConfigured } from "../shared/gemini.js";
 
 const json = (o, s = 200) =>
   new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 const titleOf = (t) => (t && t.title && (t.title.en || t.title.el)) || "Family tree";
+
+// The family's language pair for a tree (heritage + host). Host is English today.
+const pairFor = (t) => [((t && t.config && t.config.secondLang) || "el"), "en"];
+
+// First audio attachment of a memory, as base64 + mime (for transcription), or null.
+async function audioFromRec(rec) {
+  const media = rec.media || [];
+  for (let i = 0; i < media.length; i++) {
+    const m = media[i];
+    if (m && /^audio\//.test(m.type || "")) {
+      try {
+        const res = await memoryMedia().getWithMetadata(`${rec.id}/${i}`, { type: "arrayBuffer" });
+        if (res && res.data) return { b64: Buffer.from(res.data).toString("base64"), mime: (res.metadata && res.metadata.contentType) || m.type || "audio/ogg" };
+      } catch {}
+    }
+  }
+  return null;
+}
+
+// Transcribe (if audio) + translate a memory into both of the tree's languages. null if
+// nothing to translate (e.g. a photo-only memory) or Gemini isn't configured/failed.
+async function generateTr(t, rec) {
+  const au = await audioFromRec(rec);
+  const text = stripMemTags(rec.text || "");
+  if (!au && !text) return null;
+  return await memoryBilingual({ audioB64: au && au.b64, audioMime: au && au.mime, text: text || undefined, langs: pairFor(t) });
+}
 
 export default async (req) => {
   const sess = currentUser(req);
@@ -40,6 +68,7 @@ export default async (req) => {
           id: rec.id, tree: tid, treeTitle: titleOf(t), yourRole: role, personId: rec.personId,
           personName: (p.nameEn || p.nameEl || "Unknown"),
           from: rec.fromName || rec.from || "", text: stripMemTags(rec.text || ""),
+          tr: rec.tr || null,
           status: rec.status, ts: rec.ts,
           media: (rec.media || []).map((m, i) => ({
             type: m.type,
@@ -69,14 +98,31 @@ export default async (req) => {
       return json({ ok: true });
     }
     if (action === "approve") {
-      // Just flip the status. Approved memories render in their own "💚 Memories"
-      // section on the person's card (owner via /api/memories, family via
-      // /api/memories-public) — we no longer copy the text into the person's notes,
-      // which used to make it show up twice.
+      // Flip the status, and (best-effort) transcribe+translate into both the family's
+      // languages so the memory shows on the tree bilingually. Never blocks approval.
       rec.text = stripMemTags(rec.text || "");
       rec.status = "approved";
+      if (!rec.tr) { try { const tr = await generateTr(t, rec); if (tr) rec.tr = tr; } catch (e) { console.warn("[memories] translate:", e && e.message); } }
       await memories().setJSON(`${tree}/${mem}`, rec);
-      return json({ ok: true });
+      return json({ ok: true, tr: rec.tr || null });
+    }
+    // (Re)generate the transcript+translation on demand — e.g. to backfill an older
+    // memory or retry. Owner/editor only (already checked above).
+    if (action === "translate") {
+      try { const tr = await generateTr(t, rec); if (tr) { rec.tr = tr; await memories().setJSON(`${tree}/${mem}`, rec); return json({ ok: true, tr }); } }
+      catch (e) { console.warn("[memories] translate:", e && e.message); }
+      return json({ ok: false, error: "translate_failed", configured: geminiConfigured() });
+    }
+    // Save an edited transcript/translation (a garbled auto-transcript of a precious
+    // message is worse than none — owner/editor can fix it).
+    if (action === "settr") {
+      const tr = body.tr;
+      if (!tr || typeof tr !== "object" || !tr.texts || typeof tr.texts !== "object") return json({ error: "bad_request" }, 400);
+      const clean = { sourceLang: String(tr.sourceLang || "").slice(0, 8), texts: {} };
+      for (const k of Object.keys(tr.texts)) if (typeof tr.texts[k] === "string") clean.texts[String(k).slice(0, 8)] = tr.texts[k].slice(0, 5000);
+      rec.tr = clean;
+      await memories().setJSON(`${tree}/${mem}`, rec);
+      return json({ ok: true, tr: clean });
     }
     return json({ error: "bad_action" }, 400);
   }

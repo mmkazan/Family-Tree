@@ -46,6 +46,7 @@ export default async (req) => {
       id: rec.id, tree: id, personId: rec.personId, status: "approved",
       from: rec.fromName || rec.from || "",
       text: stripMemTags(rec.text || ""),
+      tr: rec.tr || null,
       ts: rec.ts,
       media: (rec.media || []).map((m, i) => ({
         type: m.type,

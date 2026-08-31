@@ -29,6 +29,14 @@
   .btn:hover{background:var(--accent-deep)}
   .btn.ghost{background:transparent;color:var(--muted);border-color:var(--hair)}
   .btn.ghost:hover{border-color:var(--danger);color:var(--danger)}
+  .btn.small{padding:5px 12px;font-size:.82rem}
+  .trbox{margin:12px 0 4px;padding:11px 12px;background:var(--surface-2);border:1px solid var(--hair);border-radius:9px}
+  .trhint{font-size:.78rem;color:var(--faint);margin-bottom:8px}
+  .trl{display:block;margin-bottom:8px}
+  .trlang{display:block;font-size:.7rem;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--olive);margin-bottom:3px}
+  .trtext{width:100%;font:inherit;font-size:.95rem;line-height:1.45;color:var(--ink);background:var(--surface);border:1px solid var(--hair);border-radius:7px;padding:8px 10px;resize:vertical}
+  .trtext:focus{outline:none;border-color:var(--accent)}
+  .trrow{display:flex;gap:8px;margin-top:2px}
   .pill{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;font-weight:700;color:var(--gold);margin-left:auto}
   .pill.ok{color:var(--olive)}
   .grp-head{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--hair)}
@@ -87,7 +95,7 @@
         return head + items.map(card).join("");
       }).join("");
       view.innerHTML=html;
-      view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b.getAttribute("data-tree"),b.getAttribute("data-mem"),b.getAttribute("data-act")); }); });
+      view.querySelectorAll("[data-act]").forEach(function(b){ b.addEventListener("click",function(){ act(b); }); });
     }).catch(function(){ view.innerHTML='<div class="empty">Couldn’t load — refresh to try again.</div>'; });
   }
 
@@ -97,6 +105,22 @@
     if(/^image\//.test(m.type)) return '<img loading="lazy" src="'+m.url+'" alt="photo" />';
     return '<a href="'+m.url+'">attachment</a>';
   }
+  var LNAME={el:"Greek",en:"English",es:"Spanish",fr:"French",it:"Italian",de:"German",pt:"Portuguese",pl:"Polish",tr:"Turkish",ru:"Russian",uk:"Ukrainian",ar:"Arabic",he:"Hebrew",zh:"Chinese",hi:"Hindi"};
+  // Editable transcript + translation (Gemini). Owner/editor can fix a garbled auto-transcript.
+  function trBlock(m){
+    var tr=m.tr, langs = (tr&&tr.texts)?Object.keys(tr.texts):[];
+    var rows = langs.map(function(k){
+      return '<label class="trl"><span class="trlang">'+esc(LNAME[k]||k.toUpperCase())+'</span>'+
+        '<textarea class="trtext" data-lang="'+esc(k)+'" rows="2">'+esc(tr.texts[k]||"")+'</textarea></label>';
+    }).join("");
+    var has=langs.length>0;
+    var btns='<div class="trrow">'+
+      (has?'<button class="btn small" data-act="savetr" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Save</button>':'')+
+      '<button class="btn ghost small" data-act="translate" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">'+(has?'Re-translate':'Transcribe &amp; translate')+'</button></div>';
+    return '<div class="trbox" data-src="'+esc((tr&&tr.sourceLang)||"")+'">'+
+      '<div class="trhint">'+(has?'Transcript &amp; translation — edit if anything’s off, then Save.':'Transcribe &amp; translate into both languages.')+'</div>'+
+      rows+btns+'</div>';
+  }
   function card(m){
     var pill = m.status==="approved" ? '<span class="pill ok">on the tree</span>' : '<span class="pill">to review</span>';
     var meds=(m.media||[]).map(function(x){return '<div class="med">'+media(x)+'</div>';}).join("");
@@ -105,11 +129,20 @@
       '<button class="btn ghost" data-act="reject" data-tree="'+esc(m.tree)+'" data-mem="'+esc(m.id)+'">Hide</button></div>';
     return '<div class="card"><div style="display:flex;align-items:baseline"><span class="for serif">For '+esc(m.personName)+'</span>'+pill+'</div>'+
       '<div class="meta">from '+esc(m.from||"family")+' · '+when(m.ts)+'</div>'+
-      (m.text?'<div class="txt">“'+esc(m.text)+'”</div>':'')+meds+actions+'</div>';
+      (m.text?'<div class="txt">“'+esc(m.text)+'”</div>':'')+meds+trBlock(m)+actions+'</div>';
   }
-  function act(tree,mem,action){
-    api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({tree:tree,mem:mem,action:action})})
-      .then(function(r){return r.json();}).then(function(){ load(); }).catch(function(){ alert("Couldn’t update — try again."); });
+  function act(b){
+    var tree=b.getAttribute("data-tree"), mem=b.getAttribute("data-mem"), action=b.getAttribute("data-act");
+    var payload={tree:tree,mem:mem,action:action};
+    if(action==="savetr"){ var box=b.closest(".trbox"), texts={};
+      if(box) box.querySelectorAll(".trtext").forEach(function(t){ texts[t.getAttribute("data-lang")]=t.value; });
+      payload.tr={sourceLang:(box&&box.getAttribute("data-src"))||"", texts:texts}; }
+    var oldTxt=b.textContent; b.disabled=true; if(action==="translate")b.textContent="Working…";
+    api("/api/memories",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){return r.json();}).then(function(j){
+        if(j && j.ok===false){ alert(j.configured===false ? "Translation isn’t switched on yet — add the Gemini key in Netlify." : "Couldn’t translate — try again."); b.disabled=false; b.textContent=oldTxt; return; }
+        load();
+      }).catch(function(){ alert("Couldn’t update — try again."); b.disabled=false; b.textContent=oldTxt; });
   }
 })();
 </script>
