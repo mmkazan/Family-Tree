@@ -14,7 +14,7 @@
   :root{
     --bg:#e9ebe4; --stage:#eef0e9; --surface:#f8f8f3; --surface-2:#f1f2ea;
     --ink:#17262b; --muted:#5d6b6f; --faint:#8a9599;
-    --accent:#1e5c6e; --accent-soft:#dbe6e6; --brass:#b4894a; --brass-soft:#e6d6b8;
+    --accent:#1e5c6e; --accent-soft:#dbe6e6; --brass:#b4894a; --brass-soft:#e6d6b8; --olive:#6f9b6e; --olive-soft:#e3ece0;
     --line:#b7a98a; --hair:#d7d8cd; --danger:#a5453a;
     --born:#1e5c6e; --raised:#6f9b6e; --educated:#b4894a; --worked:#4a6f9e; --lived:#9e6b8a; --died:#7d746b; --other:#8a9599;
     --baptism:#6f93b8; --military:#7a7150; --immigration:#4f9e86; --married:#b0688e; --burial:#6d7076;
@@ -26,7 +26,7 @@
   :root:not([data-theme="light"]){ @media (prefers-color-scheme: dark){
     --bg:#0f1a1d; --stage:#12201f; --surface:#182a2d; --surface-2:#14252a;
     --ink:#e9e7dd; --muted:#a6b3b3; --faint:#6f807f;
-    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120;
+    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120; --olive:#8bb46a; --olive-soft:#20302a;
     --line:#8a7a54; --hair:#26383b; --danger:#d98a80;
     --born:#5aa7ba; --raised:#8bb46a; --educated:#d0a45e; --worked:#6f97c9; --lived:#c08bab; --died:#9a9086; --other:#7f908f;
     --baptism:#7fa6cc; --military:#a99a6e; --immigration:#66b39a; --married:#c98aab; --burial:#8b8e94;
@@ -37,7 +37,7 @@
   :root[data-theme="dark"]{
     --bg:#0f1a1d; --stage:#12201f; --surface:#182a2d; --surface-2:#14252a;
     --ink:#e9e7dd; --muted:#a6b3b3; --faint:#6f807f;
-    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120;
+    --accent:#5aa7ba; --accent-soft:#1c333a; --brass:#d0a45e; --brass-soft:#3a3120; --olive:#8bb46a; --olive-soft:#20302a;
     --line:#8a7a54; --hair:#26383b; --danger:#d98a80;
     --born:#5aa7ba; --raised:#8bb46a; --educated:#d0a45e; --worked:#6f97c9; --lived:#c08bab; --died:#9a9086; --other:#7f908f;
     --baptism:#7fa6cc; --military:#a99a6e; --immigration:#66b39a; --married:#c98aab; --burial:#8b8e94;
@@ -319,6 +319,8 @@
   .place-row .findbtn{white-space:nowrap;font-size:12.5px;padding:8px 10px}
   .place-row .coordtag{font-size:11.5px;margin-top:6px;display:flex;align-items:center;gap:6px;color:var(--faint)}
   .place-row .coordtag.set{color:var(--raised)}
+  .coordtag .ct-ic{display:inline-flex;align-items:center}
+  .coordtag .ct-ic svg{width:13px;height:13px}
   .geo-results{margin-top:6px;border:1px solid var(--hair);border-radius:8px;overflow:hidden;background:var(--surface);display:none}
   .geo-results.open{display:block}
   .geo-results button{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);
@@ -374,7 +376,9 @@
   .mem-leave{display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 14px;text-decoration:none;
     border:1px solid var(--hair);border-radius:12px;background:var(--surface-2);color:var(--ink);transition:border-color .15s,background .15s}
   .mem-leave:hover{border-color:var(--olive);background:var(--accent-soft)}
-  .mem-leave .ic{font-size:20px;flex:0 0 auto}
+  .mem-leave .ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--olive-soft);display:flex;align-items:center;justify-content:center}
+  .mem-leave .ic .hrt{width:19px;height:19px;color:var(--olive)}
+  .p-mems .k .hrt{width:15px;height:15px;color:var(--olive);vertical-align:-2px;margin-right:3px}
   .mem-leave .tx{flex:1;display:flex;flex-direction:column;line-height:1.3;min-width:0}
   .mem-leave .t1{font-weight:700;font-size:14.5px}
   .mem-leave .t2{font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis}

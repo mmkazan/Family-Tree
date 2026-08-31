@@ -67,6 +67,7 @@
   .t-link{background:none;border:none;padding:0;font:inherit;font-size:.85rem;color:var(--accent-deep);font-weight:600;cursor:pointer;text-decoration:none}
   .t-link:hover{text-decoration:underline}
   .t-link.danger{color:var(--danger);margin-left:auto}
+  .t-link .hrt{width:14px;height:14px;color:var(--olive);vertical-align:-2px;margin-right:4px}
   .editors-panel{padding:0 16px 16px;border-top:1px dashed var(--hair);margin:2px 0 0}
   .ed-head{font-size:.78rem;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:13px 0 9px}
   .ed-list{display:flex;flex-direction:column;gap:7px}
@@ -104,6 +105,8 @@
 (function(){
   "use strict";
   var view=document.getElementById("view");
+  // Brand heart (olive via CSS currentColor) — matches the app instead of the 💚 emoji.
+  var HEART='<svg class="hrt" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20.7l-1.06-.98C6.4 15.36 3.5 12.72 3.5 9.5 3.5 7.02 5.42 5.1 7.9 5.1c1.4 0 2.74.65 3.6 1.71l.5.63.5-.63C13.36 5.75 14.7 5.1 16.1 5.1c2.48 0 4.4 1.92 4.4 4.4 0 3.22-2.9 5.86-7.44 10.22L12 20.7z" fill="currentColor"/></svg>';
   function esc(s){return (s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
   function api(path,opts){opts=opts||{};opts.credentials="include";return fetch(path,opts);}
 
@@ -179,7 +182,7 @@
     var open = isOwner ? 'Open →' : 'Open to edit →';
     var actions =
       '<div class="t-actions">'+
-        '<a class="t-link" href="/memories?tree='+id+'">💚 Review memories</a>'+
+        '<a class="t-link" href="/memories?tree='+id+'">'+HEART+'Review memories</a>'+
         (isOwner ? '<button type="button" class="t-link t-manage" data-id="'+id+'">Manage access</button>' : '')+
         (isOwner ? '<button type="button" class="t-link danger t-del" data-id="'+id+'" data-name="'+esc(title)+'">Delete</button>' : '')+
       '</div>';

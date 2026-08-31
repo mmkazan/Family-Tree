@@ -589,7 +589,7 @@
         '<button type="button" class="rm pl-rm" title="'+esc(T("del"))+'">✕</button></div>'+
       '<div class="pr-find"><input class="pl-label" placeholder="'+esc(T("placeName"))+'" value="'+esc(pl.label||"")+'" />'+
         '<button type="button" class="btn findbtn pl-find">'+esc(T("findPlace"))+'</button></div>'+
-      '<div class="coordtag'+(hasCoord?' set':'')+'"><span class="ct-ic">'+(hasCoord?'📍':'○')+'</span><span class="ct-txt">'+esc(hasCoord?T("coordSet"):T("coordNone"))+'</span></div>'+
+      '<div class="coordtag'+(hasCoord?' set':'')+'"><span class="ct-ic">'+(hasCoord?PIN_MINI:'○')+'</span><span class="ct-txt">'+esc(hasCoord?T("coordSet"):T("coordNone"))+'</span></div>'+
       '<div class="geo-results"></div></div>';
   }
   function readPlaceRows(keepEmpty){ var arr=[]; var box=$("placeRows"); if(!box) return arr;
@@ -617,7 +617,7 @@
         b.addEventListener("click",function(){
           row.setAttribute("data-lat", parseFloat(item.lat)); row.setAttribute("data-lng", parseFloat(item.lon));
           var ct=row.querySelector(".coordtag"); ct.classList.add("set");
-          ct.querySelector(".ct-ic").textContent="📍"; ct.querySelector(".ct-txt").textContent=T("coordSet");
+          ct.querySelector(".ct-ic").innerHTML=PIN_MINI; ct.querySelector(".ct-txt").textContent=T("coordSet");
           res.classList.remove("open"); res.innerHTML="";
           if(!row.querySelector(".pl-label").value.trim()){ row.querySelector(".pl-label").value=item.display_name.split(",")[0]; }
         });
@@ -718,7 +718,7 @@
       '<div class="place-row" id="bpRow"'+(hasBp?' data-lat="'+p.placeLat+'" data-lng="'+p.placeLng+'"':'')+'>'+
         '<div class="pr-find"><input class="pl-label" id="f_place" value="'+esc(p.place||"")+'" placeholder="'+esc(T("placeName"))+'" />'+
           '<button type="button" class="btn findbtn" id="bpFind">'+esc(T("findPlace"))+'</button></div>'+
-        '<div class="coordtag'+(hasBp?' set':'')+'"><span class="ct-ic">'+(hasBp?'📍':'○')+'</span><span class="ct-txt">'+esc(hasBp?T("coordSet"):T("coordNone"))+'</span></div>'+
+        '<div class="coordtag'+(hasBp?' set':'')+'"><span class="ct-ic">'+(hasBp?PIN_MINI:'○')+'</span><span class="ct-txt">'+esc(hasBp?T("coordSet"):T("coordNone"))+'</span></div>'+
         '<div class="geo-results"></div></div></div>';
     html+=fieldRow(T("notes"),"f_notes",p.notes,"","",true);
     html+=fieldRow(T("source"),"f_source",p.source,"","",true);
@@ -865,6 +865,12 @@
   function stripMemTag(s){ return String(s||"").replace(/[\[［【〔]\s*mem\s*[:：：]\s*[A-Za-z0-9_-]+\s*[:：：]\s*[A-Za-z0-9_-]+\s*[\]］】〕]/gi," ").replace(/\s{2,}/g," ").trim(); }
   // The borrowed WhatsApp number that receives memories (overridable per-tree via config).
   function memWaNumber(){ var c=(state.config&&state.config.memoryWhatsApp)||""; return String(c||"447476909484").replace(/[^0-9]/g,""); }
+  // Brand heart (olive, via CSS currentColor) — replaces the 💚 emoji so the memory motif
+  // matches the app's palette instead of the flat OS emoji.
+  var HEART_SVG='<svg class="hrt" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20.7l-1.06-.98C6.4 15.36 3.5 12.72 3.5 9.5 3.5 7.02 5.42 5.1 7.9 5.1c1.4 0 2.74.65 3.6 1.71l.5.63.5-.63C13.36 5.75 14.7 5.1 16.1 5.1c2.48 0 4.4 1.92 4.4 4.4 0 3.22-2.9 5.86-7.44 10.22L12 20.7z" fill="currentColor"/></svg>';
+  // Brand outline pin (currentColor) — replaces the 📍 emoji in the "location set" indicator,
+  // matching the app's stroke-icon style. Inherits the coordtag's olive "set" colour.
+  var PIN_MINI='<svg class="pinmini" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s6-5.3 6-10a6 6 0 10-12 0c0 4.7 6 10 6 10z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="11" r="2" stroke="currentColor" stroke-width="1.7"/></svg>';
   function loadMemories(){
     if(!accountMode || !treeId) return;   // memories are per-account-tree only
     // Owner (session) uses the review endpoint; a family member on a share link uses
@@ -897,7 +903,7 @@
   function memSectionHtml(pid){
     var mems=memByPerson[pid]; if(!mems||!mems.length) return "";
     var lbl = (lang==="el") ? "Αναμνήσεις" : "Memories";
-    var h='<div class="p-field p-mems"><div class="k">💚 '+esc(lbl)+'</div>';
+    var h='<div class="p-field p-mems"><div class="k">'+HEART_SVG+esc(lbl)+'</div>';
     mems.forEach(function(m){
       var txt=stripMemTag(m.text);
       h+='<div class="mem-card">';
@@ -917,7 +923,7 @@
     var tag="[mem:"+treeId+":"+pid+"]";
     var href="https://wa.me/"+num+"?text="+encodeURIComponent(tag);
     return '<a class="mem-leave" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer">'+
-      '<span class="ic">💚</span><span class="tx"><span class="t1">'+esc(T("leaveMemory"))+'</span>'+
+      '<span class="ic">'+HEART_SVG+'</span><span class="tx"><span class="t1">'+esc(T("leaveMemory"))+'</span>'+
       '<span class="t2">'+esc(T("leaveMemoryHint"))+'</span></span><span class="wa">WhatsApp ↗</span></a>';
   }
 
