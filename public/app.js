@@ -867,7 +867,13 @@
   // so it never shows on a card (mirrors the server-side memtag.js).
   function stripMemTag(s){ return String(s||"").replace(/[\[［【〔]\s*mem\s*[:：：]\s*[A-Za-z0-9_-]+\s*[:：：]\s*[A-Za-z0-9_-]+\s*[\]］】〕]/gi," ").replace(/\s{2,}/g," ").trim(); }
   // The borrowed WhatsApp number that receives memories (overridable per-tree via config).
-  function memWaNumber(){ var c=(state.config&&state.config.memoryWhatsApp)||""; return String(c||"447476909484").replace(/[^0-9]/g,""); }
+  // Elaia's WhatsApp number was BORROWED from Trey's Twilio. With the Kazantzis tree parked
+  // (2026-09) that number is back with Trey, so Elaia has no WhatsApp of its own: returning ""
+  // switches OFF every "leave a memory" WhatsApp link (memLeaveBtnHtml hides itself when there's
+  // no number), so nobody messages a number that now belongs to Trey. To bring family
+  // memory-capture back later, put Elaia's own number in config.memoryWhatsApp — or wire Facebook
+  // Messenger — and the buttons return automatically.
+  function memWaNumber(){ var c=(state.config&&state.config.memoryWhatsApp)||""; return String(c||"").replace(/[^0-9]/g,""); }
   // Brand heart (olive, via CSS currentColor) — replaces the 💚 emoji so the memory motif
   // matches the app's palette instead of the flat OS emoji.
   var HEART_SVG='<svg class="hrt" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 20.7l-1.06-.98C6.4 15.36 3.5 12.72 3.5 9.5 3.5 7.02 5.42 5.1 7.9 5.1c1.4 0 2.74.65 3.6 1.71l.5.63.5-.63C13.36 5.75 14.7 5.1 16.1 5.1c2.48 0 4.4 1.92 4.4 4.4 0 3.22-2.9 5.86-7.44 10.22L12 20.7z" fill="currentColor"/></svg>';
