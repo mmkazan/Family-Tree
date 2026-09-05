@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Elaia — keep their voice, in both languages</title>
+<meta name="description" content="Elaia keeps your family's memories in two languages — Greek, Italian, Polish, Punjabi, Turkish, Portuguese or Spanish, alongside English. Send a voice note on WhatsApp; Elaia writes it down, translates it, and keeps it with the person on your family tree.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+  /* Palette + fonts shared with my.html / index.html. Locked to LIGHT. */
+  :root{
+    color-scheme:light;
+    --bg:#e9ebe4; --surface:#f8f8f3; --surface-2:#f1f2ea;
+    --ink:#17262b; --muted:#5d6b6f; --faint:#8a9599;
+    --accent:#1e5c6e; --accent-deep:#17495a; --accent-soft:#dbe6e6;
+    --brass:#b4894a; --olive:#6f9b6e; --olive-soft:#e3ebe0; --line:#b7a98a; --hair:#d7d8cd; --danger:#a5453a;
+    --shadow:0 1px 2px rgba(23,38,43,.08),0 6px 18px rgba(23,38,43,.09);
+    --shadow-lg:0 12px 40px rgba(23,38,43,.16); --radius:11px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Alegreya Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .serif{font-family:"GFS Didot",Georgia,"Times New Roman",serif;font-weight:400}
+  a{color:var(--accent-deep)}
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px}
+  /* language switching: elements carry data-en / data-el; body.el shows Greek */
+  [data-el]{}
+
+  /* ── nav ── */
+  nav.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0 10px;gap:14px}
+  .brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+  .brand svg{width:30px;height:30px;color:var(--olive)}
+  .brand .name{font-family:"GFS Didot",Georgia,serif;font-size:1.9rem;letter-spacing:.5px;line-height:1}
+  .navr{display:flex;align-items:center;gap:10px}
+  .lang{display:inline-flex;border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:var(--surface)}
+  .lang button{border:none;background:transparent;font:inherit;font-weight:700;font-size:.78rem;letter-spacing:.06em;padding:6px 11px;color:var(--muted);cursor:pointer}
+  .lang button.on{background:var(--accent);color:#fff}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--accent);border-radius:8px;padding:11px 18px;font:inherit;font-weight:600;font-size:.96rem;cursor:pointer;transition:.15s;background:var(--accent);color:#fff;text-decoration:none;white-space:nowrap}
+  .btn:hover{background:var(--accent-deep);border-color:var(--accent-deep)}
+  .btn.ghost{background:transparent;color:var(--accent-deep);border-color:var(--hair)}
+  .btn.ghost:hover{border-color:var(--accent);background:var(--surface)}
+  .btn.sm{padding:8px 14px;font-size:.9rem}
+
+  /* ── language picker ── */
+  .pick{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 18px}
+  .pick .pl{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-right:2px}
+  .pick button{border:1px solid var(--hair);background:var(--surface);color:var(--ink);font:inherit;font-size:.88rem;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;transition:.15s}
+  .pick button:hover{border-color:var(--accent)}
+  .pick button.on{background:var(--olive);border-color:var(--olive);color:#fff}
+  .pick button small{font-weight:400;opacity:.75;margin-left:4px}
+  /* ── hero ── */
+  .hero{padding:54px 0 40px;display:grid;grid-template-columns:1.15fr 1fr;gap:44px;align-items:center}
+  .hero h1{font-size:clamp(2.1rem,4.6vw,3.3rem);line-height:1.12;margin:0 0 14px;text-wrap:balance}
+  .hero h1 em{font-style:normal;color:var(--accent-deep)}
+  .hero .lead{font-size:1.18rem;color:var(--muted);margin:0 0 22px;max-width:34em}
+  .hero .cta{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .hero .fine{font-size:.86rem;color:var(--faint);margin:12px 0 0}
+  .eyebrow{display:inline-block;font-size:.76rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--olive);margin-bottom:12px}
+
+  /* phone / memory card demo */
+  .demo{background:var(--surface);border:1px solid var(--hair);border-radius:16px;box-shadow:var(--shadow-lg);padding:18px;position:relative}
+  .demo .who{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .demo .ava{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#d8c9a8,#a88d5f);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--hair)}
+  .demo .nm{font-family:"GFS Didot",Georgia,serif;font-size:1.2rem;line-height:1.1}
+  .demo .yr{font-size:.82rem;color:var(--muted)}
+  .bubble{background:#e7f3e6;border-radius:12px 12px 12px 3px;padding:10px 12px;font-size:.92rem;margin-bottom:10px;display:flex;gap:10px;align-items:center}
+  .bubble .play{width:30px;height:30px;border-radius:50%;background:var(--olive);flex:none;display:grid;place-items:center}
+  .bubble .play:after{content:"";border-left:10px solid #fff;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px}
+  .bubble .wave{flex:1;height:22px;background:repeating-linear-gradient(90deg,var(--olive) 0 2px,transparent 2px 5px);opacity:.55;mask:linear-gradient(90deg,#000 60%,transparent);-webkit-mask:linear-gradient(90deg,#000 60%,transparent)}
+  .bubble .dur{font-size:.78rem;color:var(--muted);white-space:nowrap}
+  .bubble.en{background:var(--accent-soft)} .bubble.en .play{background:var(--accent)} .bubble.en .wave{background:repeating-linear-gradient(90deg,var(--accent) 0 2px,transparent 2px 5px)}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pair .txt{background:var(--surface-2);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;font-size:.9rem;line-height:1.45}
+  .pair .txt b{display:block;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:4px}
+  .demo .tag{position:absolute;top:-12px;right:16px;background:var(--brass);color:#fff;font-size:.72rem;letter-spacing:.06em;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:20px;box-shadow:var(--shadow)}
+
+  /* ── sections ── */
+  section{padding:46px 0}
+  section.alt{background:var(--surface);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+  h2.serif{font-size:clamp(1.6rem,3vw,2.2rem);margin:0 0 8px;text-wrap:balance}
+  .sub{color:var(--muted);margin:0 0 26px;font-size:1.04rem;max-width:40em}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{background:var(--surface-2);border:1px solid var(--hair);border-radius:var(--radius);padding:20px}
+  .alt .step{background:var(--bg)}
+  .step .n{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;margin-bottom:12px;font-family:"GFS Didot",Georgia,serif}
+  .step h3{margin:0 0 6px;font-size:1.12rem}
+  .step p{margin:0;color:var(--muted);font-size:.95rem}
+  .feat{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 28px}
+  .feat div{padding-left:28px;position:relative}
+  .feat div:before{content:"";position:absolute;left:0;top:.45em;width:14px;height:14px;border-radius:50%;background:var(--olive)}
+  .feat h3{margin:0 0 3px;font-size:1.05rem}
+  .feat p{margin:0;color:var(--muted);font-size:.94rem}
+
+  /* ── story ── */
+  .story{display:grid;grid-template-columns:1fr 1.4fr;gap:36px;align-items:center}
+  .story blockquote{margin:0;font-family:"GFS Didot",Georgia,serif;font-size:1.35rem;line-height:1.45;color:var(--ink);border-left:3px solid var(--brass);padding-left:18px}
+  .story .by{margin:12px 0 0 21px;color:var(--muted);font-size:.92rem}
+  .story p{color:var(--muted)}
+
+  /* ── pricing ── */
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+  .plan{background:var(--surface);border:1px solid var(--hair);border-radius:var(--radius);padding:24px 22px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .plan.hi{border-color:var(--olive);box-shadow:0 0 0 3px var(--olive-soft),var(--shadow)}
+  .plan .pn{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--olive);margin-bottom:6px}
+  .plan .pr{font-family:"GFS Didot",Georgia,serif;font-size:2.1rem;line-height:1;margin:0 0 4px}
+  .plan .pr small{font-family:"Alegreya Sans",sans-serif;font-size:.95rem;color:var(--muted)}
+  .plan .pd{color:var(--muted);font-size:.92rem;margin:0 0 14px}
+  .plan ul{list-style:none;padding:0;margin:0 0 18px;flex:1}
+  .plan li{padding:6px 0 6px 24px;position:relative;font-size:.95rem;border-top:1px dashed var(--hair)}
+  .plan li:first-child{border-top:none}
+  .plan li:before{content:"✓";position:absolute;left:2px;color:var(--olive);font-weight:700}
+  .plan li.no{color:var(--faint)} .plan li.no:before{content:"–";color:var(--faint)}
+  .pnote{color:var(--faint);font-size:.84rem;margin-top:16px}
+
+  /* ── faq ── */
+  details{border-top:1px solid var(--hair);padding:14px 0}
+  details:last-of-type{border-bottom:1px solid var(--hair)}
+  summary{cursor:pointer;font-weight:600;font-size:1.02rem;list-style:none;display:flex;justify-content:space-between;gap:12px}
+  summary::-webkit-details-marker{display:none}
+  summary:after{content:"+";color:var(--brass);font-family:"GFS Didot",serif;font-size:1.3rem;line-height:1}
+  details[open] summary:after{content:"–"}
+  details p{margin:10px 0 0;color:var(--muted);font-size:.96rem;max-width:60em}
+
+  /* ── final cta / footer ── */
+  .final{text-align:center;padding:60px 0}
+  .final h2{margin-bottom:10px}
+  footer{padding:24px 0 40px;color:var(--faint);font-size:.82rem;text-align:center}
+  footer a{color:var(--muted);text-decoration:none;margin:0 8px}
+
+  @media(max-width:820px){
+    .hero{grid-template-columns:1fr;gap:30px;padding-top:34px}
+    .grid3,.plans{grid-template-columns:1fr}
+    .feat{grid-template-columns:1fr}
+    .story{grid-template-columns:1fr}
+  }
+  @media(max-width:460px){.pair{grid-template-columns:1fr}.navr .btn{display:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="top">
+    <a class="brand" href="/home">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 12c-1.6-2.4-4.4-3-6.5-2.3C6 12 9 13 12 12Z" fill="currentColor" opacity=".55"/><path d="M12 9.5c1.4-2.6 4.3-3.4 6.5-2.8C17.7 9.5 14.8 10.6 12 9.5Z" fill="currentColor"/><circle cx="12" cy="20.5" r="1.3" fill="currentColor"/></svg>
+      <span class="name">Elaia</span>
+    </a>
+    <div class="navr">
+      <span class="lang" role="group" aria-label="Language">
+        <button type="button" id="langEn" class="on">EN</button><button type="button" id="langEl">ΕΛ</button>
+      </span>
+      <a class="btn ghost sm" href="/my" data-en="Sign in" data-el="Σύνδεση">Sign in</a>
+    </div>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <header class="hero">
+    <div>
+      <span class="eyebrow" data-en="For {Lang} &amp; English families" data-el="Για ελληνικές &amp; αγγλόφωνες οικογένειες">For Greek &amp; English families</span>
+      <h1 class="serif" data-en="Keep their voice. <em>In both languages.</em>" data-el="Κρατήστε τη φωνή τους. <em>Και στις δύο γλώσσες.</em>">Keep their voice. <em>In both languages.</em></h1>
+      <p class="lead" data-en="{Gran} sends a voice note on WhatsApp. Elaia writes it down, translates it between {Lang} and English, and speaks it back in the other language — so the grandchildren understand her, and she can hear what they say back, even if reading is hard." data-el="Η γιαγιά στέλνει ένα φωνητικό μήνυμα στο WhatsApp. Η Elaia το καταγράφει, το μεταφράζει ελληνικά–αγγλικά και το λέει ξανά με φωνή στην άλλη γλώσσα — για να την καταλαβαίνουν τα εγγόνια, κι εκείνη να ακούει ό,τι της λένε, ακόμα κι αν δυσκολεύεται να διαβάσει.">Yiayia sends a voice note on WhatsApp. Elaia writes it down, translates it between Greek and English, and speaks it back in the other language — so the grandchildren understand her, and she can hear what they say back, even if reading is hard.</p>
+      <div class="pick" id="pick" role="group" aria-label="Your family's language">
+        <span class="pl" data-en="We speak English and…" data-el="Μιλάμε αγγλικά και…">We speak English and…</span>
+      </div>
+      <div class="cta">
+        <a class="btn" href="/my" data-en="Start your family's tree — free" data-el="Ξεκινήστε το δέντρο σας — δωρεάν">Start your family's tree — free</a>
+        <a class="btn ghost" href="#how" data-en="See how it works" data-el="Δείτε πώς λειτουργεί">See how it works</a>
+      </div>
+      <p class="fine" data-en="Your first 20 memories are free. No app to install — WhatsApp and a web link is all your family needs." data-el="Οι πρώτες 20 αναμνήσεις είναι δωρεάν. Χωρίς εφαρμογή — μόνο WhatsApp και ένας σύνδεσμος.">Your first 20 memories are free. No app to install — WhatsApp and a web link is all your family needs.</p>
+    </div>
+
+    <div class="demo" aria-hidden="true">
+      <span class="tag" data-en="A memory" data-el="Μια ανάμνηση">A memory</span>
+      <div class="who">
+        <span class="ava"></span>
+        <div><div class="nm" id="dNm">Ελένη · Eleni</div><div class="yr" id="dYr">1938 – &nbsp;·&nbsp; Kalamata → Haringey</div></div>
+      </div>
+      <div class="bubble"><span class="play"></span><span class="wave"></span><span class="dur" id="dDur">0:42 · Ελένη</span></div>
+      <div class="bubble en"><span class="play"></span><span class="wave"></span><span class="dur">0:45 · English voice</span></div>
+      <div class="pair">
+        <div class="txt"><b id="dLab">Ελληνικά</b><span id="dTxt">Ο παππούς σου έφτιαχνε ψωμί κάθε Σάββατο. Το σπίτι μύριζε ολόκληρο. Έλεγε ότι μια οικογένεια που ζυμώνει μαζί δεν χωρίζει ποτέ.</span></div>
+        <div class="txt"><b>English</b>Your grandfather baked bread every Saturday. The whole house smelled of it. He used to say a family that kneads together never comes apart.</div>
+      </div>
+    </div>
+  </header>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="alt" id="how">
+  <div class="wrap">
+    <h2 class="serif" data-en="Three steps. No one has to learn anything new." data-el="Τρία βήματα. Κανείς δεν χρειάζεται να μάθει κάτι καινούργιο.">Three steps. No one has to learn anything new.</h2>
+    <p class="sub" data-en="Built for the relative who will never download an app — and the one who forgot their password." data-el="Φτιαγμένο για τον συγγενή που δεν θα κατεβάσει ποτέ εφαρμογή — και για εκείνον που ξέχασε τον κωδικό του.">Built for the relative who will never download an app — and the one who forgot their password.</p>
+    <div class="grid3">
+      <div class="step"><div class="n">1</div>
+        <h3 data-en="Send a voice note" data-el="Στείλτε ένα φωνητικό">Send a voice note</h3>
+        <p data-en="Anyone in the family WhatsApps Elaia a voice note, photo or message about a relative — a story, a recipe, who's who in an old photo." data-el="Οποιοσδήποτε στην οικογένεια στέλνει στην Elaia ένα φωνητικό, μια φωτογραφία ή ένα μήνυμα για κάποιον συγγενή — μια ιστορία, μια συνταγή, ποιος είναι ποιος σε μια παλιά φωτογραφία.">Anyone in the family WhatsApps Elaia a voice note, photo or message about a relative — a story, a recipe, who's who in an old photo.</p></div>
+      <div class="step"><div class="n">2</div>
+        <h3 data-en="Elaia translates it — in text and in voice" data-el="Η Elaia το μεταφράζει — σε κείμενο και σε φωνή">Elaia translates it — in text and in voice</h3>
+        <p data-en="The original voice is kept exactly as it was. Alongside it: the words in {Lang} and English side by side, and a spoken version in the other language — so nobody has to be able to read to understand." data-el="Η αυθεντική φωνή μένει όπως ακριβώς ήταν. Δίπλα της: τα λόγια στα ελληνικά και στα αγγλικά, και μια εκφωνημένη εκδοχή στην άλλη γλώσσα — για να μη χρειάζεται κανείς να διαβάζει για να καταλάβει.">The original voice is kept exactly as it was. Alongside it: the words in Greek and English side by side, and a spoken version in the other language — so nobody has to be able to read to understand.</p></div>
+      <div class="step"><div class="n">3</div>
+        <h3 data-en="It lives with the person on your tree" data-el="Μένει με το πρόσωπο στο δέντρο σας">It lives with the person on your tree</h3>
+        <p data-en="You approve it with one tap, and it appears on that relative's card — with their photos, their places on the map, and everything else the family has shared." data-el="Το εγκρίνετε με ένα άγγιγμα κι εμφανίζεται στην κάρτα του συγγενή — με τις φωτογραφίες του, τους τόπους του στον χάρτη κι ό,τι άλλο έχει μοιραστεί η οικογένεια.">You approve it with one tap, and it appears on that relative's card — with their photos, their places on the map, and everything else the family has shared.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT YOU GET ── -->
+<section>
+  <div class="wrap">
+    <h2 class="serif" data-en="More than a family tree" data-el="Κάτι παραπάνω από ένα οικογενειακό δέντρο">More than a family tree</h2>
+    <p class="sub" data-en="The tree is the shelf. The memories are what you'll come back for." data-el="Το δέντρο είναι το ράφι. Οι αναμνήσεις είναι ο λόγος που θα ξαναγυρίσετε.">The tree is the shelf. The memories are what you'll come back for.</p>
+    <div class="feat">
+      <div><h3 data-en="Their real voice, kept" data-el="Η αληθινή τους φωνή, φυλαγμένη">Their real voice, kept</h3><p data-en="Voice notes are stored as recorded and play back inside the tree — and every memory gets a spoken translation, so {gran} hears the grandchildren in {Lang} and they hear her in English." data-el="Τα φωνητικά φυλάσσονται όπως ηχογραφήθηκαν και παίζουν μέσα στο δέντρο — και κάθε ανάμνηση αποκτά εκφωνημένη μετάφραση, ώστε η γιαγιά να ακούει τα εγγόνια στα ελληνικά κι εκείνα να την ακούν στα αγγλικά.">Voice notes are stored as recorded and play back inside the tree — and every memory gets a spoken translation, so {gran} hears the grandchildren in {Lang} and they hear her in English.</p></div>
+      <div><h3 data-en="{Lang} ⇄ English, side by side" data-el="Ελληνικά ⇄ Αγγλικά, δίπλα δίπλα">Greek ⇄ English, side by side</h3><p data-en="Names, places and memories in both languages. One switch flips the whole tree — the map labels too." data-el="Ονόματα, τόποι και αναμνήσεις και στις δύο γλώσσες. Ένας διακόπτης αλλάζει όλο το δέντρο — και τις ετικέτες του χάρτη.">Names, places and memories in both languages. One switch flips the whole tree — the map labels too.</p></div>
+      <div><h3 data-en="Their journey on a map" data-el="Η διαδρομή τους στον χάρτη">Their journey on a map</h3><p data-en="Born, raised, married, worked, lived — pinned and joined in order, from the village to wherever the family landed." data-el="Γέννηση, μεγάλωμα, γάμος, δουλειά, ζωή — καρφιτσωμένα και ενωμένα με τη σειρά, από το χωριό ως εκεί που κατέληξε η οικογένεια.">Born, raised, married, worked, lived — pinned and joined in order, from the village to wherever the family landed.</p></div>
+      <div><h3 data-en="Private by design" data-el="Ιδιωτικό εκ σχεδιασμού">Private by design</h3><p data-en="Trees are never public. You choose who can view and who can add. Living relatives are hidden on shared links by default." data-el="Τα δέντρα δεν είναι ποτέ δημόσια. Εσείς επιλέγετε ποιος βλέπει και ποιος προσθέτει. Οι εν ζωή συγγενείς κρύβονται στους κοινόχρηστους συνδέσμους.">Trees are never public. You choose who can view and who can add. Living relatives are hidden on shared links by default.</p></div>
+      <div><h3 data-en="Always yours to keep" data-el="Πάντα δικό σας">Always yours to keep</h3><p data-en="Export everything — tree, photos and voice notes — in one click, any time. Nightly off-site backups." data-el="Εξαγωγή όλων — δέντρο, φωτογραφίες, φωνητικά — με ένα κλικ, όποτε θέλετε. Νυχτερινά αντίγραφα ασφαλείας.">Export everything — tree, photos and voice notes — in one click, any time. Nightly off-site backups.</p></div>
+      <div><h3 data-en="Two families, one tree" data-el="Δύο οικογένειες, ένα δέντρο">Two families, one tree</h3><p data-en="Link trees when families join — a wedding, a new baby — so both sides finally know who's who." data-el="Ενώστε δέντρα όταν ενώνονται οικογένειες — έναν γάμο, ένα νέο μωρό — ώστε κι οι δύο πλευρές να ξέρουν επιτέλους ποιος είναι ποιος.">Link trees when families join — a wedding, a new baby — so both sides finally know who's who.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STORY ── -->
+<section class="alt">
+  <div class="wrap story">
+    <div>
+      <blockquote data-en="I built Elaia because I never recorded my parents. I have photographs. I don't have their voices telling me who is in them." data-el="Έφτιαξα την Elaia επειδή δεν ηχογράφησα ποτέ τους γονείς μου. Έχω φωτογραφίες. Δεν έχω τις φωνές τους να μου λένε ποιος είναι μέσα σ' αυτές.">I built Elaia because I never recorded my parents. I have photographs. I don't have their voices telling me who is in them.</blockquote>
+      <p class="by" data-en="Matthew Kazantzis, founder — Derby, England" data-el="Matthew Kazantzis, ιδρυτής — Derby, Αγγλία">Matthew Kazantzis, founder — Derby, England</p>
+    </div>
+    <div>
+      <h2 class="serif" data-en="Record them while you can" data-el="Ηχογραφήστε τους όσο μπορείτε">Record them while you can</h2>
+      <p data-en="Every diaspora family has the same gap: the elders speak one language, the grandchildren another, and the stories fall in between. A voice note takes forty seconds. Ask about the village, the crossing, the wedding, the recipe nobody wrote down. Elaia does the rest." data-el="Κάθε οικογένεια της διασποράς έχει το ίδιο κενό: οι μεγάλοι μιλούν μια γλώσσα, τα εγγόνια μια άλλη, κι οι ιστορίες χάνονται ανάμεσα. Ένα φωνητικό παίρνει σαράντα δευτερόλεπτα. Ρωτήστε για το χωριό, το ταξίδι, τον γάμο, τη συνταγή που κανείς δεν έγραψε. Η Elaia κάνει τα υπόλοιπα.">Every diaspora family has the same gap: the elders speak one language, the grandchildren another, and the stories fall in between. A voice note takes forty seconds. Ask about the village, the crossing, the wedding, the recipe nobody wrote down. Elaia does the rest.</p>
+      <p data-en="Easter, Christmas, a name day — whenever the family is in one room is the right time to start." data-el="Πάσχα, Χριστούγεννα, μια γιορτή — όποτε η οικογένεια είναι μαζί, είναι η σωστή στιγμή να ξεκινήσετε.">Easter, Christmas, a name day — whenever the family is in one room is the right time to start.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section id="pricing">
+  <div class="wrap">
+    <h2 class="serif" data-en="Simple pricing" data-el="Απλές τιμές">Simple pricing</h2>
+    <p class="sub" data-en="Start free. Pay only when the family is actually using it." data-el="Ξεκινήστε δωρεάν. Πληρώστε μόνο όταν η οικογένεια το χρησιμοποιεί πραγματικά.">Start free. Pay only when the family is actually using it.</p>
+    <div class="plans">
+      <div class="plan">
+        <div class="pn" data-en="Free" data-el="Δωρεάν">Free</div>
+        <div class="pr">£0</div>
+        <p class="pd" data-en="For getting the family started." data-el="Για να ξεκινήσει η οικογένεια.">For getting the family started.</p>
+        <ul>
+          <li data-en="Unlimited people on your tree" data-el="Απεριόριστα πρόσωπα στο δέντρο">Unlimited people on your tree</li>
+          <li data-en="Photos, places and the map" data-el="Φωτογραφίες, τόποι και χάρτης">Photos, places and the map</li>
+          <li data-en="{Lang} ⇄ English names and labels" data-el="Ονόματα και ετικέτες ελληνικά ⇄ αγγλικά">Greek ⇄ English names and labels</li>
+          <li data-en="<b>20 memories</b> — voice, photo or text, translated in text and voice" data-el="<b>20 αναμνήσεις</b> — φωνή, φωτογραφία ή κείμενο, μεταφρασμένες σε κείμενο και φωνή"><b>20 memories</b> — voice, photo or text, translated in text and voice</li>
+          <li data-en="Full export, always" data-el="Πλήρης εξαγωγή, πάντα">Full export, always</li>
+        </ul>
+        <a class="btn ghost" href="/my" data-en="Start free" data-el="Ξεκινήστε δωρεάν">Start free</a>
+      </div>
+      <div class="plan hi">
+        <div class="pn" data-en="Family" data-el="Οικογένεια">Family</div>
+        <div class="pr">£4.99 <small data-en="/ month, per tree" data-el="/ μήνα, ανά δέντρο">/ month, per tree</small></div>
+        <p class="pd" data-en="Or £39 a year. For when the memories keep coming." data-el="Ή £39 τον χρόνο. Για όταν οι αναμνήσεις δεν σταματούν.">Or £39 a year. For when the memories keep coming.</p>
+        <ul>
+          <li data-en="Everything in Free" data-el="Όλα του Δωρεάν">Everything in Free</li>
+          <li data-en="<b>Unlimited memories</b>, translated in text and voice" data-el="<b>Απεριόριστες αναμνήσεις</b>, μεταφρασμένες σε κείμενο και φωνή"><b>Unlimited memories</b>, translated in text and voice</li>
+          <li data-en="Spoken translations for every memory" data-el="Εκφωνημένες μεταφράσεις για κάθε ανάμνηση">Spoken translations for every memory</li>
+          <li data-en="Family members can leave memories directly" data-el="Τα μέλη της οικογένειας αφήνουν αναμνήσεις απευθείας">Family members can leave memories directly</li>
+          <li data-en="Printable tapestry poster of your tree" data-el="Εκτυπώσιμη αφίσα «ταπισερί» του δέντρου σας">Printable tapestry poster of your tree</li>
+        </ul>
+        <a class="btn" href="/my" data-en="Start free, upgrade any time" data-el="Ξεκινήστε δωρεάν, αναβαθμίστε όποτε θέλετε">Start free, upgrade any time</a>
+      </div>
+      <div class="plan">
+        <div class="pn" data-en="Tree linking" data-el="Ένωση δέντρων">Tree linking</div>
+        <div class="pr">£29 <small data-en="one-off, per link" data-el="εφάπαξ, ανά ένωση">one-off, per link</small></div>
+        <p class="pd" data-en="Join two families' trees when they become one." data-el="Ενώστε τα δέντρα δύο οικογενειών όταν γίνονται μία.">Join two families' trees when they become one.</p>
+        <ul>
+          <li data-en="Connect a couple across two trees" data-el="Συνδέστε ένα ζευγάρι σε δύο δέντρα">Connect a couple across two trees</li>
+          <li data-en="Each family keeps its own tree and privacy" data-el="Κάθε οικογένεια κρατά το δέντρο και την ιδιωτικότητά της">Each family keeps its own tree and privacy</li>
+          <li data-en="Shared “who's who” view for both sides" data-el="Κοινή προβολή «ποιος είναι ποιος» και για τις δύο πλευρές">Shared “who's who” view for both sides</li>
+          <li data-en="Perfect for weddings and new arrivals" data-el="Ιδανικό για γάμους και νέες αφίξεις">Perfect for weddings and new arrivals</li>
+        </ul>
+        <a class="btn ghost" href="/my" data-en="Link two trees" data-el="Ενώστε δύο δέντρα">Link two trees</a>
+      </div>
+    </div>
+    <p class="pnote" data-en="Prices in GBP, VAT included. Cancel any time; your tree and every memory stay yours and exportable, whatever plan you're on." data-el="Τιμές σε GBP με ΦΠΑ. Ακύρωση όποτε θέλετε· το δέντρο και κάθε ανάμνηση παραμένουν δικά σας και εξαγώγιμα, όποιο πλάνο κι αν έχετε.">Prices in GBP, VAT included. Cancel any time; your tree and every memory stay yours and exportable, whatever plan you're on.</p>
+  </div>
+</section>
+
+<!-- ── FAQ ── -->
+<section class="alt">
+  <div class="wrap">
+    <h2 class="serif" data-en="Questions families ask" data-el="Ερωτήσεις που κάνουν οι οικογένειες">Questions families ask</h2>
+    <details><summary data-en="Does {gran} need to install anything?" data-el="Χρειάζεται η γιαγιά να εγκαταστήσει κάτι;">Does yiayia need to install anything?</summary><p data-en="No. If she can send a WhatsApp voice note, she can use Elaia. You save Elaia's number in her phone once, and she talks to it like she talks to you." data-el="Όχι. Αν μπορεί να στείλει φωνητικό στο WhatsApp, μπορεί να χρησιμοποιήσει την Elaia. Αποθηκεύετε τον αριθμό της Elaia στο κινητό της μία φορά, και της μιλάει όπως μιλάει σε εσάς.">No. If she can send a WhatsApp voice note, she can use Elaia. You save Elaia's number in her phone once, and she talks to it like she talks to you.</p></details>
+    <details><summary data-en="How good is the translation?" data-el="Πόσο καλή είναι η μετάφραση;">How good is the translation?</summary><p data-en="Good enough to understand a story; not a certified translation. The original recording is always kept, and anyone with edit access can correct the text — village dialect and family nicknames included." data-el="Αρκετά καλή για να καταλάβετε μια ιστορία· όχι επίσημη μετάφραση. Η αυθεντική ηχογράφηση φυλάσσεται πάντα, και όποιος έχει δικαίωμα επεξεργασίας μπορεί να διορθώσει το κείμενο — ντοπιολαλιά και παρατσούκλια της οικογένειας μαζί.">Good enough to understand a story; not a certified translation. The original recording is always kept, and anyone with edit access can correct the text — village dialect and family nicknames included.</p></details>
+    <details><summary data-en="My mother struggles to read English — will this work for her?" data-el="Η μητέρα μου δυσκολεύεται να διαβάσει — θα της κάνει;">My mother struggles to read English — will this work for her?</summary><p data-en="Yes — that's the point. Every memory the grandchildren leave is spoken back in {Lang}, so she taps play and listens. Nothing to read, nothing to type." data-el="Ναι — αυτός είναι ο σκοπός. Κάθε ανάμνηση που αφήνουν τα εγγόνια εκφωνείται στα ελληνικά, οπότε πατάει αναπαραγωγή και ακούει. Τίποτα να διαβάσει, τίποτα να πληκτρολογήσει.">Yes — that's the point. Every memory the grandchildren leave is spoken back in {Lang}, so she taps play and listens. Nothing to read, nothing to type.</p></details>
+    <details><summary data-en="Who can see our tree?" data-el="Ποιος βλέπει το δέντρο μας;">Who can see our tree?</summary><p data-en="Only people you give a link to. Nothing is public or searchable. Living relatives are hidden on view-only links unless you choose otherwise." data-el="Μόνο όσοι έχουν τον σύνδεσμο που δίνετε εσείς. Τίποτα δεν είναι δημόσιο ή αναζητήσιμο. Οι εν ζωή συγγενείς κρύβονται στους συνδέσμους προβολής, εκτός αν επιλέξετε αλλιώς.">Only people you give a link to. Nothing is public or searchable. Living relatives are hidden on view-only links unless you choose otherwise.</p></details>
+    <details><summary data-en="What happens to our memories if we stop paying?" data-el="Τι γίνεται με τις αναμνήσεις μας αν σταματήσουμε να πληρώνουμε;">What happens to our memories if we stop paying?</summary><p data-en="They stay. You keep viewing everything you've added; you just can't add new memories beyond the free 20 until you upgrade again. And you can export the lot at any time." data-el="Μένουν. Συνεχίζετε να βλέπετε ό,τι έχετε προσθέσει· απλώς δεν προσθέτετε νέες αναμνήσεις πέρα από τις 20 δωρεάν μέχρι να αναβαθμίσετε ξανά. Και μπορείτε να τα εξάγετε όλα όποτε θέλετε.">They stay. You keep viewing everything you've added; you just can't add new memories beyond the free 20 until you upgrade again. And you can export the lot at any time.</p></details>
+    <details><summary data-en="Which languages does Elaia speak?" data-el="Ποιες γλώσσες μιλάει η Elaia;">Which languages does Elaia speak?</summary><p data-en="Greek, Italian, Polish, Punjabi, Turkish, Portuguese and Spanish — each paired with English, in text and in voice. Greek is where Elaia started. If your family's language isn't here yet, tell us when you sign up; new pairs are added by demand." data-el="Ελληνικά, ιταλικά, πολωνικά, παντζάμπι, τουρκικά, πορτογαλικά και ισπανικά — καθεμία σε ζεύγος με τα αγγλικά, σε κείμενο και φωνή. Τα ελληνικά είναι από όπου ξεκίνησε η Elaia. Αν η γλώσσα της οικογένειάς σας δεν υπάρχει ακόμη, πείτε μας το όταν εγγραφείτε.">Greek, Italian, Polish, Punjabi, Turkish, Portuguese and Spanish — each paired with English, in text and in voice. Greek is where Elaia started. If your family's language isn't here yet, tell us when you sign up; new pairs are added by demand.</p></details>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ── -->
+<section class="final">
+  <div class="wrap">
+    <h2 class="serif" data-en="Start with one voice note." data-el="Ξεκινήστε με ένα φωνητικό.">Start with one voice note.</h2>
+    <p class="sub" style="margin:0 auto 22px" data-en="Ask the oldest person in your family one question tonight. That's the whole first step." data-el="Κάντε στον μεγαλύτερο της οικογένειας μία ερώτηση απόψε. Αυτό είναι όλο το πρώτο βήμα.">Ask the oldest person in your family one question tonight. That's the whole first step.</p>
+    <a class="btn" href="/my" data-en="Create your tree — free" data-el="Δημιουργήστε το δέντρο σας — δωρεάν">Create your tree — free</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Elaia · <span data-en="ελαία — the olive tree" data-el="ελαία — η ελιά">ελαία — the olive tree</span></span>
+    <div style="margin-top:6px"><a href="/my" data-en="Sign in" data-el="Σύνδεση">Sign in</a><a href="#pricing" data-en="Pricing" data-el="Τιμές">Pricing</a><a href="mailto:mmkazan@gmail.com" data-en="Contact" data-el="Επικοινωνία">Contact</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  // ── Family languages. Add a pair here and it appears on the picker. ──
+  // gran = the word the family uses for grandmother; sample = one memory in that language.
+  var LANGS={
+    el:{name:"Greek",native:"Ελληνικά",gran:"Yiayia",nm:"Ελένη · Eleni",yr:"1938 – &nbsp;·&nbsp; Kalamata → Haringey",
+        sample:"Ο παππούς σου έφτιαχνε ψωμί κάθε Σάββατο. Το σπίτι μύριζε ολόκληρο. Έλεγε ότι μια οικογένεια που ζυμώνει μαζί δεν χωρίζει ποτέ."},
+    it:{name:"Italian",native:"Italiano",gran:"Nonna",nm:"Maria",yr:"1941 – &nbsp;·&nbsp; Avellino → Bedford",
+        sample:"Tuo nonno faceva il pane ogni sabato. Tutta la casa ne profumava. Diceva che una famiglia che impasta insieme non si divide mai."},
+    pl:{name:"Polish",native:"Polski",gran:"Babcia",nm:"Zofia",yr:"1946 – &nbsp;·&nbsp; Kraków → Derby",
+        sample:"Twój dziadek piekł chleb w każdą sobotę. Cały dom pachniał. Mówił, że rodzina, która razem wyrabia ciasto, nigdy się nie rozpada."},
+    pa:{name:"Punjabi",native:"ਪੰਜਾਬੀ",gran:"Bibi",nm:"ਹਰਜੀਤ ਕੌਰ · Harjit Kaur",yr:"1944 – &nbsp;·&nbsp; Jalandhar → Derby",
+        sample:"ਤੁਹਾਡਾ ਦਾਦਾ ਹਰ ਸ਼ਨੀਵਾਰ ਰੋਟੀ ਬਣਾਉਂਦਾ ਸੀ। ਸਾਰਾ ਘਰ ਮਹਿਕ ਜਾਂਦਾ ਸੀ। ਉਹ ਕਹਿੰਦਾ ਸੀ ਕਿ ਜੋ ਪਰਿਵਾਰ ਇਕੱਠੇ ਆਟਾ ਗੁੰਨ੍ਹਦਾ ਹੈ, ਉਹ ਕਦੇ ਨਹੀਂ ਟੁੱਟਦਾ।"},
+    tr:{name:"Turkish",native:"Türkçe",gran:"Babaanne",nm:"Ayşe",yr:"1943 – &nbsp;·&nbsp; Trabzon → Derby",
+        sample:"Deden her cumartesi ekmek yapardı. Bütün ev kokardı. Derdi ki birlikte hamur yoğuran aile asla dağılmaz."},
+    pt:{name:"Portuguese",native:"Português",gran:"Avó",nm:"Maria",yr:"1940 – &nbsp;·&nbsp; Viseu → Thetford",
+        sample:"O teu avô fazia pão todos os sábados. A casa inteira cheirava a pão. Dizia que uma família que amassa junta nunca se separa."},
+    es:{name:"Spanish",native:"Español",gran:"Abuela",nm:"Carmen",yr:"1942 – &nbsp;·&nbsp; Vigo → London",
+        sample:"Tu abuelo hacía pan todos los sábados. Toda la casa olía a pan. Decía que una familia que amasa junta nunca se separa."}
+  };
+  var ORDER=["el","it","pl","pa","tr","pt","es"];
+  var fam="el", ui="en";
+  var els=document.querySelectorAll("[data-en][data-el]");
+  var bEn=document.getElementById("langEn"), bEl=document.getElementById("langEl"), pick=document.getElementById("pick");
+
+  function fill(t,L){
+    return t.replace(/\{Lang\}/g,L.name).replace(/\{Gran\}/g,L.gran).replace(/\{gran\}/g,L.gran.toLowerCase());
+  }
+  function render(){
+    var L=LANGS[fam];
+    // Full Greek UI only makes sense for the Greek pair; otherwise the page reads in English.
+    if(fam!=="el") ui="en";
+    bEl.hidden=(fam!=="el");
+    els.forEach(function(e){ e.innerHTML=(ui==="el")?e.getAttribute("data-el"):fill(e.getAttribute("data-en"),L); });
+    document.documentElement.lang=(ui==="el"?"el":"en");
+    bEn.classList.toggle("on",ui!=="el"); bEl.classList.toggle("on",ui==="el");
+    document.getElementById("dNm").innerHTML=L.nm;
+    document.getElementById("dYr").innerHTML=L.yr;
+    document.getElementById("dDur").textContent="0:42 · "+L.gran;
+    document.getElementById("dLab").textContent=L.native;
+    document.getElementById("dTxt").textContent=L.sample;
+    Array.prototype.forEach.call(pick.querySelectorAll("button"),function(b){ b.classList.toggle("on",b.getAttribute("data-fam")===fam); });
+    try{localStorage.setItem("elaia.fam",fam);localStorage.setItem("elaia.lang",ui);}catch(_){}
+  }
+  ORDER.forEach(function(k){
+    var b=document.createElement("button"); b.type="button"; b.setAttribute("data-fam",k);
+    b.innerHTML=LANGS[k].name+"<small>"+LANGS[k].native+"</small>";
+    b.addEventListener("click",function(){ fam=k; render(); });
+    pick.appendChild(b);
+  });
+  bEn.addEventListener("click",function(){ui="en";render();});
+  bEl.addEventListener("click",function(){ui="el";render();});
+
+  // Deep links: /home?lang=pl or /home#pl preselect a family language (handy for community flyers / QR codes).
+  var q=(location.search.match(/[?&]lang=([a-z]{2})/)||[])[1]||(location.hash||"").replace("#","");
+  var sf=null,su=null; try{sf=localStorage.getItem("elaia.fam");su=localStorage.getItem("elaia.lang");}catch(_){}
+  if(LANGS[q]) fam=q; else if(LANGS[sf]) fam=sf; else { var nl=(navigator.language||"").slice(0,2).toLowerCase(); if(LANGS[nl]) fam=nl; }
+  if(fam==="el" && (su==="el" || (!su && /^el\b/i.test(navigator.language||"")))) ui="el";
+  render();
+})();
+</script>
+</body>
+</html>

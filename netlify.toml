@@ -21,3 +21,14 @@
   for = "/app.js"
   [headers.values]
     cache-control = "public, max-age=0, must-revalidate"
+
+# Public landing page (memories-first). Root stays the legacy tree for now.
+[[redirects]]
+  from = "/home"
+  to = "/home.html"
+  status = 200
+
+[[headers]]
+  for = "/home.html"
+  [headers.values]
+    cache-control = "public, max-age=0, must-revalidate"
